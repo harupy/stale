@@ -25,6 +25,7 @@ import {StaleOperations} from './stale-operations';
 import {Statistics} from './statistics';
 import {LoggerService} from '../services/logger.service';
 import {OctokitIssue} from '../interfaces/issue';
+import {IUser} from '../interfaces/user';
 
 /***
  * Handle processing of issues for staleness/closure.
@@ -36,6 +37,13 @@ export class IssuesProcessor {
       new Date().getTime() - new Date(timestamp).getTime();
 
     return millisSinceLastUpdated <= daysInMillis;
+  }
+
+  private static _getDaysSince(timestamp: string): number {
+    const diffTime = Math.abs(
+      new Date().getTime() - new Date(timestamp).getTime()
+    );
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 
   private static _endIssueProcessing(issue: Issue): void {
@@ -70,6 +78,7 @@ export class IssuesProcessor {
   readonly addedLabelIssues: Issue[] = [];
   readonly addedCloseCommentIssues: Issue[] = [];
   readonly statistics: Statistics | undefined;
+  readonly maintainers: string[] = [];
   private readonly _logger: Logger = new Logger();
 
   constructor(options: IIssuesProcessorOptions) {
@@ -94,6 +103,46 @@ export class IssuesProcessor {
 
     if (this.options.enableStatistics) {
       this.statistics = new Statistics();
+    }
+  }
+
+  async init() {
+    await this.setMaintainers();
+  }
+
+  async setMaintainers() {
+    this.maintainers.push(
+      ...(await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
+        ({login}) => login
+      )
+    );
+  }
+
+  private isMaintainer({login}: IUser): boolean {
+    return this.maintainers.includes(login);
+  }
+
+  isPostedByMaintainer({user}: IComment): boolean {
+    return user ? this.isMaintainer(user) : false;
+  }
+
+  async listAllIssueComments(issue: Readonly<Issue>): Promise<IComment[]> {
+    try {
+      this._consumeIssueOperation(issue);
+      this.statistics?.incrementFetchedItemsCommentsCount();
+      const comments = await this.client.paginate(
+        this.client.rest.issues.listComments,
+        {
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          issue_number: issue.number,
+          per_page: 100
+        }
+      );
+      return comments;
+    } catch (error) {
+      this._logger.error(`List issue comments error: ${error.message}`);
+      return Promise.resolve([]);
     }
   }
 
@@ -266,6 +315,61 @@ export class IssuesProcessor {
         LoggerService.white('└──'),
         `Continuing the process for this $$type`
       );
+    }
+
+    if (!issue.isPullRequest) {
+      const comments = await this.listAllIssueComments(issue);
+      const hasMaintainerAssignee = issue.assignees.some(this.isMaintainer);
+      const daysSinceIssueCreated = IssuesProcessor._getDaysSince(
+        issue.created_at
+      );
+      const mentionAssignees = issue.assignees
+        .map(({login}) => `@${login}`)
+        .join(' ');
+      if (comments.length > 0) {
+        const lastComment = comments[0];
+        const isBotComment = lastComment.user?.type !== 'User';
+        const lastCommentPostedByMaintainer =
+          this.isPostedByMaintainer(lastComment);
+        const daysSinceLastCommentCreated = IssuesProcessor._getDaysSince(
+          lastComment.created_at
+        );
+        if (!isBotComment && daysSinceLastCommentCreated > 14) {
+          if (lastCommentPostedByMaintainer) {
+            if (!this.options.debugOnly) {
+              await this.client.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `${mentionAssignees} Any updates?`
+              });
+              return;
+            }
+          } else {
+            if (!this.options.debugOnly) {
+              await this.client.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '@mlflow Hi, MLflow maintainers. Please reply to the comment.'
+              });
+              return;
+            }
+          }
+        }
+      } else {
+        if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
+          if (!this.options.debugOnly) {
+            await this.client.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: '@mlflow Assign a maintainer to this issue and triage it.'
+            });
+            return;
+          }
+        }
+      }
     }
 
     issueLogger.info(
