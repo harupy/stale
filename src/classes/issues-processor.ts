@@ -139,25 +139,6 @@ export class IssuesProcessor {
     return this.isMaintainer(login);
   }
 
-  async listAllIssueComments(issue: Readonly<Issue>): Promise<IComment[]> {
-    try {
-      this.statistics?.incrementFetchedItemsCommentsCount();
-      const comments = await this.client.paginate(
-        this.client.rest.issues.listComments,
-        {
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          issue_number: issue.number,
-          per_page: 100
-        }
-      );
-      return comments;
-    } catch (error) {
-      this._logger.error(`List issue comments error: ${error.message}`);
-      return Promise.resolve([]);
-    }
-  }
-
   async processIssues(page: Readonly<number> = 1): Promise<number> {
     // get the next batch of issues
     const issues: Issue[] = await this.getIssues(page);
@@ -330,7 +311,7 @@ export class IssuesProcessor {
     }
 
     if (this.options.mlflow && !issue.isPullRequest) {
-      const comments = await this.listAllIssueComments(issue);
+      const comments = await this.listIssueComments(issue, issue.created_at);
       issueLogger.info(`This issue has ${comments.length} comments`);
       const hasMaintainerAssignee = issue.assignees.some(user =>
         this.isMaintainer(user.login)
@@ -341,27 +322,33 @@ export class IssuesProcessor {
       const daysSinceIssueCreated = IssuesProcessor._getDaysSince(
         issue.created_at
       );
-      const mentionAssignees = issue.assignees
-        .map(({login}) => `@${login}`)
-        .join(' ');
+
       if (comments.length > 0) {
         const lastComment = comments[0];
         issueLogger.info(
           `Last comment was posted by ${lastComment.user?.login}`
         );
         const isBotComment = lastComment.user?.type !== 'User';
+        issueLogger.info(`Is this a bot comment? ${isBotComment}`);
         const lastCommentPostedByMaintainer =
           lastComment.user && this.isPostedByMaintainer(lastComment.user.login);
+        issueLogger.info(
+          `Did a maintainer post the last comment posted? ${lastCommentPostedByMaintainer}`
+        );
         const daysSinceLastCommentCreated = lastComment.created_at
           ? IssuesProcessor._getDaysSince(lastComment.created_at)
           : 0;
+        issueLogger.info(
+          `Days since the last comment was posted: ${daysSinceLastCommentCreated}`
+        );
         if (!isBotComment && daysSinceLastCommentCreated > 14) {
           if (lastCommentPostedByMaintainer) {
-            await this.createComment(issue, `${mentionAssignees} Any updates?`);
+            const mention = issue.user ? `@${issue.user.login}` : '';
+            await this.createComment(issue, `${mention} Any updates?`);
           } else {
             await this.createComment(
               issue,
-              `'Hi, MLflow maintainers. Please reply to the comment.'`
+              'Reminder to MLflow maintainers. Please reply to the comment.'
             );
             return;
           }
@@ -371,7 +358,7 @@ export class IssuesProcessor {
           issueLogger.info('This issue has no assignees');
           await this.createComment(
             issue,
-            'Hi, MLflow maintainers. Please assign a maintainer to this issue and triage it.'
+            'Reminder to MLflow maintainers. Please assign a maintainer to this issue and start triaging.'
           );
           return;
         }
@@ -627,13 +614,17 @@ export class IssuesProcessor {
     try {
       this._consumeIssueOperation(issue);
       this.statistics?.incrementFetchedItemsCommentsCount();
-      const comments = await this.client.rest.issues.listComments({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        issue_number: issue.number,
-        since: sinceDate
-      });
-      return comments.data;
+      const comments = await this.client.paginate(
+        this.client.rest.issues.listComments,
+        {
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          issue_number: issue.number,
+          since: sinceDate,
+          per_page: 100
+        }
+      );
+      return comments;
     } catch (error) {
       this._logger.error(`List issue comments error: ${error.message}`);
       return Promise.resolve([]);

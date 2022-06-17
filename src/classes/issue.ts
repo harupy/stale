@@ -5,6 +5,7 @@ import {IIssue, OctokitIssue} from '../interfaces/issue';
 import {IIssuesProcessorOptions} from '../interfaces/issues-processor-options';
 import {ILabel} from '../interfaces/label';
 import {IMilestone} from '../interfaces/milestone';
+import {IUser} from '../interfaces/user';
 import {IsoDateString} from '../types/iso-date-string';
 import {Operations} from './operations';
 
@@ -19,6 +20,7 @@ export class Issue implements IIssue {
   readonly locked: boolean;
   readonly milestone?: IMilestone | null;
   readonly assignees: Assignee[];
+  readonly user: IUser | null | undefined;
   isStale: boolean;
   markedStaleThisRun: boolean;
   operations = new Operations();
@@ -30,6 +32,7 @@ export class Issue implements IIssue {
   ) {
     this._options = options;
     this.title = issue.title;
+    this.user = issue.user;
     this.number = issue.number;
     this.created_at = issue.created_at;
     this.updated_at = issue.updated_at;

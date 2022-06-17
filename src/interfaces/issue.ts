@@ -2,6 +2,7 @@ import {IsoDateString} from '../types/iso-date-string';
 import {Assignee} from './assignee';
 import {ILabel} from './label';
 import {IMilestone} from './milestone';
+import {IUser} from './user';
 import {components} from '@octokit/openapi-types';
 export interface IIssue {
   title: string;
@@ -14,6 +15,7 @@ export interface IIssue {
   locked: boolean;
   milestone?: IMilestone | null;
   assignees?: Assignee[] | null;
+  user?: IUser | null;
 }
 
 export type OctokitIssue = components['schemas']['issue'];
