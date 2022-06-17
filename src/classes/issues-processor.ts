@@ -345,7 +345,7 @@ export class IssuesProcessor {
         issueLogger.info(
           `Days since the last comment was posted: ${IssuesProcessor._getDaysSince(
             createdAt
-          ).toFixed(1)}`
+          ).toFixed(2)}`
         );
         if (
           !isBotComment &&
@@ -385,7 +385,7 @@ export class IssuesProcessor {
         issueLogger.info(
           `Days since this issue was posted: ${IssuesProcessor._getDaysSince(
             issue.created_at
-          ).toFixed(1)}`
+          ).toFixed(2)}`
         );
         if (
           !hasMaintainerAssignee &&

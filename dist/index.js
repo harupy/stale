@@ -556,7 +556,7 @@ class IssuesProcessor {
                     const isBotComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
                     issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
                     const createdAt = lastComment.created_at || IssuesProcessor._getNowTimestamp();
-                    issueLogger.info(`Days since the last comment was posted: ${IssuesProcessor._getDaysSince(createdAt).toFixed(1)}`);
+                    issueLogger.info(`Days since the last comment was posted: ${IssuesProcessor._getDaysSince(createdAt).toFixed(2)}`);
                     if (!isBotComment &&
                         !IssuesProcessor._updatedSince(createdAt, this.options.daysSinceLastCommentCreated)) {
                         const lastCommentPostedByMaintainer = lastComment.user
@@ -581,7 +581,7 @@ class IssuesProcessor {
                     }
                 }
                 else {
-                    issueLogger.info(`Days since this issue was posted: ${IssuesProcessor._getDaysSince(issue.created_at).toFixed(1)}`);
+                    issueLogger.info(`Days since this issue was posted: ${IssuesProcessor._getDaysSince(issue.created_at).toFixed(2)}`);
                     if (!hasMaintainerAssignee &&
                         !IssuesProcessor._updatedSince(issue.created_at, this.options.daysSinceIssueCreated)) {
                         issueLogger.info('This issue has no assignees');
