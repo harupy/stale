@@ -439,7 +439,6 @@ class IssuesProcessor {
                     issue_number: issue.number,
                     body
                 });
-                // return;
             }
         });
     }
@@ -540,6 +539,7 @@ class IssuesProcessor {
             if (this.options.mlflow && !issue.isPullRequest) {
                 const hasClosingPr = issue.labels.some(({ name }) => name === 'has-closing-pr');
                 if (hasClosingPr) {
+                    issueLogger.info('This issue has a closing PR');
                     return;
                 }
                 const comments = yield this.listIssueComments(issue, issue.created_at);
@@ -1985,6 +1985,9 @@ var Option;
     Option["IgnoreIssueUpdates"] = "ignore-issue-updates";
     Option["IgnorePrUpdates"] = "ignore-pr-updates";
     Option["ExemptDraftPr"] = "exempt-draft-pr";
+    Option["Mlflow"] = "mlflow";
+    Option["DaysSinceIssueCreated"] = "days-since-issue-created";
+    Option["DaysSinceLastCommentCreated"] = "days-since-last-comment-created";
 })(Option = exports.Option || (exports.Option = {}));
 
 

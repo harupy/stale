@@ -132,7 +132,6 @@ export class IssuesProcessor {
         issue_number: issue.number,
         body
       });
-      // return;
     }
   }
 
@@ -316,6 +315,7 @@ export class IssuesProcessor {
         ({name}) => name === 'has-closing-pr'
       );
       if (hasClosingPr) {
+        issueLogger.info('This issue has a closing PR');
         return;
       }
       const comments = await this.listIssueComments(issue, issue.created_at);

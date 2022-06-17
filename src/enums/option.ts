@@ -46,5 +46,8 @@ export enum Option {
   IgnoreUpdates = 'ignore-updates',
   IgnoreIssueUpdates = 'ignore-issue-updates',
   IgnorePrUpdates = 'ignore-pr-updates',
-  ExemptDraftPr = 'exempt-draft-pr'
+  ExemptDraftPr = 'exempt-draft-pr',
+  Mlflow = 'mlflow',
+  DaysSinceIssueCreated = 'days-since-issue-created',
+  DaysSinceLastCommentCreated = 'days-since-last-comment-created'
 }
