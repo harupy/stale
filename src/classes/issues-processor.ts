@@ -331,8 +331,12 @@ export class IssuesProcessor {
 
     if (this.options.mlflow && !issue.isPullRequest) {
       const comments = await this.listAllIssueComments(issue);
+      issueLogger.info(`This issue has ${comments.length} comments`);
       const hasMaintainerAssignee = issue.assignees.some(user =>
         this.isMaintainer(user.login)
+      );
+      issueLogger.info(
+        `Assignees on this issue: ${issue.assignees.map(({login}) => login)}`
       );
       const daysSinceIssueCreated = IssuesProcessor._getDaysSince(
         issue.created_at
@@ -342,6 +346,9 @@ export class IssuesProcessor {
         .join(' ');
       if (comments.length > 0) {
         const lastComment = comments[0];
+        issueLogger.info(
+          `Last comment was posted by ${lastComment.user?.login}`
+        );
         const isBotComment = lastComment.user?.type !== 'User';
         const lastCommentPostedByMaintainer =
           lastComment.user && this.isPostedByMaintainer(lastComment.user.login);
@@ -361,6 +368,7 @@ export class IssuesProcessor {
         }
       } else {
         if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
+          issueLogger.info('This issue has no assignees');
           await this.createComment(
             issue,
             'Hi, MLflow maintainers. Please assign a maintainer to this issue and triage it.'

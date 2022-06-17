@@ -500,7 +500,7 @@ class IssuesProcessor {
         });
     }
     processIssue(issue, labelsToAddWhenUnstale, labelsToRemoveWhenUnstale) {
-        var _a, _b;
+        var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementProcessedItemsCount(issue);
             const issueLogger = new issue_logger_1.IssueLogger(issue);
@@ -556,14 +556,17 @@ class IssuesProcessor {
             }
             if (this.options.mlflow && !issue.isPullRequest) {
                 const comments = yield this.listAllIssueComments(issue);
+                issueLogger.info(`This issue has ${comments.length} comments`);
                 const hasMaintainerAssignee = issue.assignees.some(user => this.isMaintainer(user.login));
+                issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
                 const daysSinceIssueCreated = IssuesProcessor._getDaysSince(issue.created_at);
                 const mentionAssignees = issue.assignees
                     .map(({ login }) => `@${login}`)
                     .join(' ');
                 if (comments.length > 0) {
                     const lastComment = comments[0];
-                    const isBotComment = ((_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.type) !== 'User';
+                    issueLogger.info(`Last comment was posted by ${(_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.login}`);
+                    const isBotComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
                     const lastCommentPostedByMaintainer = lastComment.user && this.isPostedByMaintainer(lastComment.user.login);
                     const daysSinceLastCommentCreated = lastComment.created_at
                         ? IssuesProcessor._getDaysSince(lastComment.created_at)
@@ -580,6 +583,7 @@ class IssuesProcessor {
                 }
                 else {
                     if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
+                        issueLogger.info('This issue has no assignees');
                         yield this.createComment(issue, 'Hi, MLflow maintainers. Please assign a maintainer to this issue and triage it.');
                         return;
                     }
