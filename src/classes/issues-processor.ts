@@ -351,7 +351,7 @@ export class IssuesProcessor {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: '@mlflow Hi, MLflow maintainers. Please reply to the comment.'
+                body: 'Hi, MLflow maintainers. Please reply to the comment.'
               });
               return;
             }
@@ -364,7 +364,7 @@ export class IssuesProcessor {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              body: '@mlflow Assign a maintainer to this issue and triage it.'
+              body: 'Hi, MLflow maintainers. Please assign a maintainer to this issue and triage it.'
             });
             return;
           }
