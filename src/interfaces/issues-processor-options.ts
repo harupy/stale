@@ -51,4 +51,5 @@ export interface IIssuesProcessorOptions {
   ignoreIssueUpdates: boolean | undefined;
   ignorePrUpdates: boolean | undefined;
   exemptDraftPr: boolean;
+  mlflow?: boolean;
 }

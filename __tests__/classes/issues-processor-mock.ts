@@ -16,7 +16,8 @@ export class IssuesProcessorMock extends IssuesProcessor {
       issue: Issue,
       label: string
     ) => Promise<string | undefined>,
-    getPullRequest?: (issue: Issue) => Promise<IPullRequest | undefined | void>
+    getPullRequest?: (issue: Issue) => Promise<IPullRequest | undefined | void>,
+    getMaintainers?: () => Promise<string[]>
   ) {
     super(options);
 
@@ -34,6 +35,10 @@ export class IssuesProcessorMock extends IssuesProcessor {
 
     if (getPullRequest) {
       this.getPullRequest = getPullRequest;
+    }
+
+    if (getMaintainers) {
+      this.getMaintainers = getMaintainers;
     }
   }
 }

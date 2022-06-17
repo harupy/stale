@@ -25,7 +25,6 @@ import {StaleOperations} from './stale-operations';
 import {Statistics} from './statistics';
 import {LoggerService} from '../services/logger.service';
 import {OctokitIssue} from '../interfaces/issue';
-import {IUser} from '../interfaces/user';
 
 /***
  * Handle processing of issues for staleness/closure.
@@ -110,25 +109,38 @@ export class IssuesProcessor {
     await this.setMaintainers();
   }
 
-  async setMaintainers() {
-    this.maintainers.push(
-      ...(await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
-        ({login}) => login
-      )
+  async getMaintainers(): Promise<string[]> {
+    return (await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
+      ({login}) => login
     );
   }
 
-  private isMaintainer({login}: IUser): boolean {
+  async setMaintainers() {
+    this.maintainers.push(...(await this.getMaintainers()));
+  }
+
+  private isMaintainer(login: string): boolean {
     return this.maintainers.includes(login);
   }
 
-  isPostedByMaintainer({user}: IComment): boolean {
-    return user ? this.isMaintainer(user) : false;
+  private async createComment(issue: Issue, body: string) {
+    if (!this.options.debugOnly) {
+      await this.client.rest.issues.createComment({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: issue.number,
+        body
+      });
+      // return;
+    }
+  }
+
+  isPostedByMaintainer(login: string): boolean {
+    return this.isMaintainer(login);
   }
 
   async listAllIssueComments(issue: Readonly<Issue>): Promise<IComment[]> {
     try {
-      this._consumeIssueOperation(issue);
       this.statistics?.incrementFetchedItemsCommentsCount();
       const comments = await this.client.paginate(
         this.client.rest.issues.listComments,
@@ -317,9 +329,11 @@ export class IssuesProcessor {
       );
     }
 
-    if (!issue.isPullRequest) {
+    if (this.options.mlflow && !issue.isPullRequest) {
       const comments = await this.listAllIssueComments(issue);
-      const hasMaintainerAssignee = issue.assignees.some(this.isMaintainer);
+      const hasMaintainerAssignee = issue.assignees.some(user =>
+        this.isMaintainer(user.login)
+      );
       const daysSinceIssueCreated = IssuesProcessor._getDaysSince(
         issue.created_at
       );
@@ -330,44 +344,28 @@ export class IssuesProcessor {
         const lastComment = comments[0];
         const isBotComment = lastComment.user?.type !== 'User';
         const lastCommentPostedByMaintainer =
-          this.isPostedByMaintainer(lastComment);
-        const daysSinceLastCommentCreated = IssuesProcessor._getDaysSince(
-          lastComment.created_at
-        );
+          lastComment.user && this.isPostedByMaintainer(lastComment.user.login);
+        const daysSinceLastCommentCreated = lastComment.created_at
+          ? IssuesProcessor._getDaysSince(lastComment.created_at)
+          : 0;
         if (!isBotComment && daysSinceLastCommentCreated > 14) {
           if (lastCommentPostedByMaintainer) {
-            if (!this.options.debugOnly) {
-              await this.client.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                body: `${mentionAssignees} Any updates?`
-              });
-              return;
-            }
+            await this.createComment(issue, `${mentionAssignees} Any updates?`);
           } else {
-            if (!this.options.debugOnly) {
-              await this.client.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                body: 'Hi, MLflow maintainers. Please reply to the comment.'
-              });
-              return;
-            }
+            await this.createComment(
+              issue,
+              `'Hi, MLflow maintainers. Please reply to the comment.'`
+            );
+            return;
           }
         }
       } else {
         if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
-          if (!this.options.debugOnly) {
-            await this.client.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              body: 'Hi, MLflow maintainers. Please assign a maintainer to this issue and triage it.'
-            });
-            return;
-          }
+          await this.createComment(
+            issue,
+            'Hi, MLflow maintainers. Please assign a maintainer to this issue and triage it.'
+          );
+          return;
         }
       }
     }

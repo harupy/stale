@@ -9,6 +9,7 @@ async function _run(): Promise<void> {
     const args = _getAndValidateArgs();
 
     const issueProcessor: IssuesProcessor = new IssuesProcessor(args);
+    await issueProcessor.init();
     await issueProcessor.processIssues();
 
     await processOutput(
@@ -87,7 +88,8 @@ function _getAndValidateArgs(): IIssuesProcessorOptions {
     ignoreUpdates: core.getInput('ignore-updates') === 'true',
     ignoreIssueUpdates: _toOptionalBoolean('ignore-issue-updates'),
     ignorePrUpdates: _toOptionalBoolean('ignore-pr-updates'),
-    exemptDraftPr: core.getInput('exempt-draft-pr') === 'true'
+    exemptDraftPr: core.getInput('exempt-draft-pr') === 'true',
+    mlflow: true
   };
 
   for (const numberInput of [

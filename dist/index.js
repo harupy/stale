@@ -377,6 +377,7 @@ class IssuesProcessor {
         this.removedLabelIssues = [];
         this.addedLabelIssues = [];
         this.addedCloseCommentIssues = [];
+        this.maintainers = [];
         this._logger = new logger_1.Logger();
         this.options = options;
         this.client = github_1.getOctokit(this.options.repoToken);
@@ -395,6 +396,10 @@ class IssuesProcessor {
         const millisSinceLastUpdated = new Date().getTime() - new Date(timestamp).getTime();
         return millisSinceLastUpdated <= daysInMillis;
     }
+    static _getDaysSince(timestamp) {
+        const diffTime = Math.abs(new Date().getTime() - new Date(timestamp).getTime());
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
     static _endIssueProcessing(issue) {
         const consumedOperationsCount = issue.operations.getConsumedOperationsCount();
         if (consumedOperationsCount > 0) {
@@ -404,6 +409,59 @@ class IssuesProcessor {
     }
     static _getCloseLabelUsedOptionName(issue) {
         return issue.isPullRequest ? option_1.Option.ClosePrLabel : option_1.Option.CloseIssueLabel;
+    }
+    init() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.setMaintainers();
+        });
+    }
+    getMaintainers() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield this.client.rest.orgs.listMembers({ org: 'mlflow' })).data.map(({ login }) => login);
+        });
+    }
+    setMaintainers() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.maintainers.push(...(yield this.getMaintainers()));
+        });
+    }
+    isMaintainer(login) {
+        return this.maintainers.includes(login);
+    }
+    createComment(issue, body) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.options.debugOnly) {
+                yield this.client.rest.issues.createComment({
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    issue_number: issue.number,
+                    body
+                });
+                // return;
+            }
+        });
+    }
+    isPostedByMaintainer(login) {
+        return this.isMaintainer(login);
+    }
+    listAllIssueComments(issue) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementFetchedItemsCommentsCount();
+                const comments = yield this.client.paginate(this.client.rest.issues.listComments, {
+                    owner: github_1.context.repo.owner,
+                    repo: github_1.context.repo.repo,
+                    issue_number: issue.number,
+                    per_page: 100
+                });
+                return comments;
+            }
+            catch (error) {
+                this._logger.error(`List issue comments error: ${error.message}`);
+                return Promise.resolve([]);
+            }
+        });
     }
     processIssues(page = 1) {
         var _a, _b;
@@ -442,7 +500,7 @@ class IssuesProcessor {
         });
     }
     processIssue(issue, labelsToAddWhenUnstale, labelsToRemoveWhenUnstale) {
-        var _a;
+        var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementProcessedItemsCount(issue);
             const issueLogger = new issue_logger_1.IssueLogger(issue);
@@ -495,6 +553,37 @@ class IssuesProcessor {
             else {
                 issueLogger.info(`The option ${issueLogger.createOptionLink(option_1.Option.OnlyLabels)} was not specified`);
                 issueLogger.info(logger_service_1.LoggerService.white('└──'), `Continuing the process for this $$type`);
+            }
+            if (this.options.mlflow && !issue.isPullRequest) {
+                const comments = yield this.listAllIssueComments(issue);
+                const hasMaintainerAssignee = issue.assignees.some(user => this.isMaintainer(user.login));
+                const daysSinceIssueCreated = IssuesProcessor._getDaysSince(issue.created_at);
+                const mentionAssignees = issue.assignees
+                    .map(({ login }) => `@${login}`)
+                    .join(' ');
+                if (comments.length > 0) {
+                    const lastComment = comments[0];
+                    const isBotComment = ((_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.type) !== 'User';
+                    const lastCommentPostedByMaintainer = lastComment.user && this.isPostedByMaintainer(lastComment.user.login);
+                    const daysSinceLastCommentCreated = lastComment.created_at
+                        ? IssuesProcessor._getDaysSince(lastComment.created_at)
+                        : 0;
+                    if (!isBotComment && daysSinceLastCommentCreated > 14) {
+                        if (lastCommentPostedByMaintainer) {
+                            yield this.createComment(issue, `${mentionAssignees} Any updates?`);
+                        }
+                        else {
+                            yield this.createComment(issue, `'Hi, MLflow maintainers. Please reply to the comment.'`);
+                            return;
+                        }
+                    }
+                }
+                else {
+                    if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
+                        yield this.createComment(issue, 'Hi, MLflow maintainers. Please assign a maintainer to this issue and triage it.');
+                        return;
+                    }
+                }
             }
             issueLogger.info(`Days before $$type stale: ${logger_service_1.LoggerService.cyan(daysBeforeStale)}`);
             const shouldMarkAsStale = should_mark_when_stale_1.shouldMarkWhenStale(daysBeforeStale);
@@ -2140,6 +2229,7 @@ function _run() {
         try {
             const args = _getAndValidateArgs();
             const issueProcessor = new issues_processor_1.IssuesProcessor(args);
+            yield issueProcessor.init();
             yield issueProcessor.processIssues();
             yield processOutput(issueProcessor.staleIssues, issueProcessor.closedIssues);
         }
@@ -2202,7 +2292,8 @@ function _getAndValidateArgs() {
         ignoreUpdates: core.getInput('ignore-updates') === 'true',
         ignoreIssueUpdates: _toOptionalBoolean('ignore-issue-updates'),
         ignorePrUpdates: _toOptionalBoolean('ignore-pr-updates'),
-        exemptDraftPr: core.getInput('exempt-draft-pr') === 'true'
+        exemptDraftPr: core.getInput('exempt-draft-pr') === 'true',
+        mlflow: true
     };
     for (const numberInput of [
         'days-before-stale',
