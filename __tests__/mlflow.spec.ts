@@ -13,7 +13,7 @@ function getDaysAgoTimestamp(
   return `${withoutMilliseconds}Z`;
 }
 
-test('Should ask maintainers to assign a maintainer when an issue has no assignees and comments', async () => {
+test('ask maintainers to assign a maintainer when an issue has no assignees and comments', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -24,10 +24,10 @@ test('Should ask maintainers to assign a maintainer when an issue has no assigne
       opts,
       1,
       'An issue that has no assignees and no comments',
-      getDaysAgoTimestamp(10),
-      getDaysAgoTimestamp(10),
+      getDaysAgoTimestamp(8),
+      getDaysAgoTimestamp(8),
       false,
-      ['Stale'],
+      [],
       false,
       false,
       undefined,
@@ -43,12 +43,9 @@ test('Should ask maintainers to assign a maintainer when an issue has no assigne
     async () => ['maintainer']
   );
   processor.init();
-
   const createCommentSpy = jest
     .spyOn(processor as any, 'createComment')
     .mockImplementation(() => {});
-
-  // process our fake issue list
   await processor.processIssues(1);
 
   expect(createCommentSpy).toHaveBeenCalledWith(
@@ -57,7 +54,7 @@ test('Should ask maintainers to assign a maintainer when an issue has no assigne
   );
 });
 
-test('Should ask maintainers to reply when the last comment was posted by a non-maintainer user', async () => {
+test('ask maintainers to reply when the last comment was posted by a non-maintainer user', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -71,7 +68,7 @@ test('Should ask maintainers to reply when the last comment was posted by a non-
       getDaysAgoTimestamp(15),
       getDaysAgoTimestamp(15),
       false,
-      ['Stale'],
+      [],
       false,
       false,
       undefined,
@@ -110,7 +107,7 @@ test('Should ask maintainers to reply when the last comment was posted by a non-
   );
 });
 
-test('Should ask the issue author to reply when the last comment was posted by a maintainer user', async () => {
+test('ask the issue author to reply when the last comment was posted by a maintainer user', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -124,7 +121,7 @@ test('Should ask the issue author to reply when the last comment was posted by a
       getDaysAgoTimestamp(15),
       getDaysAgoTimestamp(15),
       false,
-      ['Stale'],
+      [],
       false,
       false,
       undefined,
@@ -150,12 +147,9 @@ test('Should ask the issue author to reply when the last comment was posted by a
     async () => ['maintainer']
   );
   processor.init();
-
   const createCommentSpy = jest
     .spyOn(processor as any, 'createComment')
     .mockImplementation(() => {});
-
-  // process our fake issue list
   await processor.processIssues(1);
 
   expect(createCommentSpy).toHaveBeenCalledWith(
@@ -164,7 +158,7 @@ test('Should ask the issue author to reply when the last comment was posted by a
   );
 });
 
-test('Should ignore comments posted by a bot', async () => {
+test('ignore comments posted by a bot', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -178,7 +172,7 @@ test('Should ignore comments posted by a bot', async () => {
       getDaysAgoTimestamp(15),
       getDaysAgoTimestamp(15),
       false,
-      ['Stale'],
+      [],
       false,
       false,
       undefined,
@@ -208,8 +202,55 @@ test('Should ignore comments posted by a bot', async () => {
   const createCommentSpy = jest
     .spyOn(processor as any, 'createComment')
     .mockImplementation(() => {});
+  await processor.processIssues(1);
 
-  // process our fake issue list
+  expect(createCommentSpy).not.toHaveBeenCalled();
+});
+
+test('skip posting comments if a has-closing-pr label is applied', async () => {
+  const opts = {
+    ...DefaultProcessorOptions,
+    removeStaleWhenUpdated: true,
+    mlflow: true
+  };
+  const TestIssueList: Issue[] = [
+    generateIssue(
+      opts,
+      1,
+      'An issue with a comment',
+      getDaysAgoTimestamp(15),
+      getDaysAgoTimestamp(15),
+      false,
+      ['has-closing-pr'],
+      false,
+      false,
+      undefined,
+      ['non-maintainer'],
+      {login: 'non-maintainer', type: 'User'}
+    )
+  ];
+  const processor = new IssuesProcessorMock(
+    opts,
+    async p => (p === 1 ? TestIssueList : []),
+    async () => [
+      {
+        user: {
+          login: 'maintainer',
+          type: 'User'
+        },
+        body: 'comment',
+        created_at: getDaysAgoTimestamp(15)
+      }
+    ],
+    async () => new Date().toDateString(),
+    undefined,
+    async () => ['maintainer']
+  );
+  processor.init();
+
+  const createCommentSpy = jest
+    .spyOn(processor as any, 'createComment')
+    .mockImplementation(() => {});
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();

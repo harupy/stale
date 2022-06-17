@@ -432,6 +432,7 @@ class IssuesProcessor {
     createComment(issue, body) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.options.debugOnly) {
+                this._consumeIssueOperation(issue);
                 yield this.client.rest.issues.createComment({
                     owner: github_1.context.repo.owner,
                     repo: github_1.context.repo.repo,
@@ -537,31 +538,44 @@ class IssuesProcessor {
                 issueLogger.info(logger_service_1.LoggerService.white('└──'), `Continuing the process for this $$type`);
             }
             if (this.options.mlflow && !issue.isPullRequest) {
+                const hasClosingPr = issue.labels.some(({ name }) => name === 'has-closing-pr');
+                if (hasClosingPr) {
+                    return;
+                }
                 const comments = yield this.listIssueComments(issue, issue.created_at);
                 issueLogger.info(`This issue has ${comments.length} comments`);
                 const hasMaintainerAssignee = issue.assignees.some(user => this.isMaintainer(user.login));
                 issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
                 const daysSinceIssueCreated = IssuesProcessor._getDaysSince(issue.created_at);
                 if (comments.length > 0) {
-                    const lastComment = comments[0];
+                    const lastComment = comments[comments.length - 1];
                     issueLogger.info(`Last comment was posted by ${(_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.login}`);
                     const isBotComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
-                    issueLogger.info(`Is this a bot comment? ${isBotComment}`);
-                    const lastCommentPostedByMaintainer = lastComment.user && this.isPostedByMaintainer(lastComment.user.login);
-                    issueLogger.info(`Did a maintainer post the last comment posted? ${lastCommentPostedByMaintainer}`);
+                    issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
                     const daysSinceLastCommentCreated = lastComment.created_at
                         ? IssuesProcessor._getDaysSince(lastComment.created_at)
                         : 0;
                     issueLogger.info(`Days since the last comment was posted: ${daysSinceLastCommentCreated}`);
                     if (!isBotComment && daysSinceLastCommentCreated > 14) {
+                        const lastCommentPostedByMaintainer = lastComment.user
+                            ? this.isPostedByMaintainer(lastComment.user.login)
+                            : false;
+                        issueLogger.info(`Did a maintainer post the last comment? ${lastCommentPostedByMaintainer}`);
                         if (lastCommentPostedByMaintainer) {
                             const mention = issue.user ? `@${issue.user.login}` : '';
                             yield this.createComment(issue, `${mention} Any updates?`);
+                            return;
                         }
                         else {
                             yield this.createComment(issue, 'Reminder to MLflow maintainers. Please reply to the comment.');
                             return;
                         }
+                    }
+                    // We should not mark an issue as stale if it has no comments from maintainers.
+                    const hasMaintainerComment = comments.some(({ user }) => user ? this.isMaintainer(user.login) : false);
+                    if (!hasMaintainerComment) {
+                        issueLogger.info('This issue has no comments from maintainers');
+                        return;
                     }
                 }
                 else {

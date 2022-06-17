@@ -125,6 +125,7 @@ export class IssuesProcessor {
 
   private async createComment(issue: Issue, body: string) {
     if (!this.options.debugOnly) {
+      this._consumeIssueOperation(issue);
       await this.client.rest.issues.createComment({
         owner: context.repo.owner,
         repo: context.repo.repo,
@@ -311,6 +312,12 @@ export class IssuesProcessor {
     }
 
     if (this.options.mlflow && !issue.isPullRequest) {
+      const hasClosingPr = issue.labels.some(
+        ({name}) => name === 'has-closing-pr'
+      );
+      if (hasClosingPr) {
+        return;
+      }
       const comments = await this.listIssueComments(issue, issue.created_at);
       issueLogger.info(`This issue has ${comments.length} comments`);
       const hasMaintainerAssignee = issue.assignees.some(user =>
@@ -324,17 +331,12 @@ export class IssuesProcessor {
       );
 
       if (comments.length > 0) {
-        const lastComment = comments[0];
+        const lastComment = comments[comments.length - 1];
         issueLogger.info(
           `Last comment was posted by ${lastComment.user?.login}`
         );
         const isBotComment = lastComment.user?.type !== 'User';
-        issueLogger.info(`Is this a bot comment? ${isBotComment}`);
-        const lastCommentPostedByMaintainer =
-          lastComment.user && this.isPostedByMaintainer(lastComment.user.login);
-        issueLogger.info(
-          `Did a maintainer post the last comment posted? ${lastCommentPostedByMaintainer}`
-        );
+        issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
         const daysSinceLastCommentCreated = lastComment.created_at
           ? IssuesProcessor._getDaysSince(lastComment.created_at)
           : 0;
@@ -342,9 +344,16 @@ export class IssuesProcessor {
           `Days since the last comment was posted: ${daysSinceLastCommentCreated}`
         );
         if (!isBotComment && daysSinceLastCommentCreated > 14) {
+          const lastCommentPostedByMaintainer = lastComment.user
+            ? this.isPostedByMaintainer(lastComment.user.login)
+            : false;
+          issueLogger.info(
+            `Did a maintainer post the last comment? ${lastCommentPostedByMaintainer}`
+          );
           if (lastCommentPostedByMaintainer) {
             const mention = issue.user ? `@${issue.user.login}` : '';
             await this.createComment(issue, `${mention} Any updates?`);
+            return;
           } else {
             await this.createComment(
               issue,
@@ -352,6 +361,15 @@ export class IssuesProcessor {
             );
             return;
           }
+        }
+
+        // We should not mark an issue as stale if it has no comments from maintainers.
+        const hasMaintainerComment = comments.some(({user}) =>
+          user ? this.isMaintainer(user.login) : false
+        );
+        if (!hasMaintainerComment) {
+          issueLogger.info('This issue has no comments from maintainers');
+          return;
         }
       } else {
         if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
