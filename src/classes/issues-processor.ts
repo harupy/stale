@@ -42,7 +42,12 @@ export class IssuesProcessor {
     const diffTime = Math.abs(
       new Date().getTime() - new Date(timestamp).getTime()
     );
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffTime / (1000 * 60 * 60 * 24);
+  }
+
+  private static _getNowTimestamp(): string {
+    const withoutMilliseconds = new Date().toISOString().split('.')[0];
+    return `${withoutMilliseconds}Z`;
   }
 
   private static _endIssueProcessing(issue: Issue): void {
@@ -326,9 +331,6 @@ export class IssuesProcessor {
       issueLogger.info(
         `Assignees on this issue: ${issue.assignees.map(({login}) => login)}`
       );
-      const daysSinceIssueCreated = IssuesProcessor._getDaysSince(
-        issue.created_at
-      );
 
       if (comments.length > 0) {
         const lastComment = comments[comments.length - 1];
@@ -337,15 +339,20 @@ export class IssuesProcessor {
         );
         const isBotComment = lastComment.user?.type !== 'User';
         issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
-        const daysSinceLastCommentCreated = lastComment.created_at
-          ? IssuesProcessor._getDaysSince(lastComment.created_at)
-          : 0;
+
+        const createdAt =
+          lastComment.created_at || IssuesProcessor._getNowTimestamp();
         issueLogger.info(
-          `Days since the last comment was posted: ${daysSinceLastCommentCreated}`
+          `Days since the last comment was posted: ${IssuesProcessor._getDaysSince(
+            createdAt
+          ).toFixed(1)}`
         );
         if (
           !isBotComment &&
-          daysSinceLastCommentCreated > this.options.daysSinceLastCommentCreated
+          !IssuesProcessor._updatedSince(
+            createdAt,
+            this.options.daysSinceLastCommentCreated
+          )
         ) {
           const lastCommentPostedByMaintainer = lastComment.user
             ? this.isPostedByMaintainer(lastComment.user.login)
@@ -375,9 +382,17 @@ export class IssuesProcessor {
           return;
         }
       } else {
+        issueLogger.info(
+          `Days since this issue was posted: ${IssuesProcessor._getDaysSince(
+            issue.created_at
+          ).toFixed(1)}`
+        );
         if (
           !hasMaintainerAssignee &&
-          daysSinceIssueCreated > this.options.daysSinceIssueCreated
+          !IssuesProcessor._updatedSince(
+            issue.created_at,
+            this.options.daysSinceIssueCreated
+          )
         ) {
           issueLogger.info('This issue has no assignees');
           await this.createComment(
