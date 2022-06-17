@@ -192,6 +192,15 @@ inputs:
     description: 'Any update (update/comment) can reset the stale idle time on the pull requests. Override "ignore-updates" option regarding only the pull requests.'
     default: ''
     required: false
+  # Special options for mlflow
+  days-since-issue-created:
+    description: 'Maintainers must assign a maintainer to an issue within a specified number of days.'
+    default: '7'
+    required: false
+  days-since-last-comment-created:
+    description: 'Maintainers must reply to the last comment in an issue within a specified number of days.'
+    default: '14'
+    required: false
 outputs:
   closed-issues-prs:
     description: 'List of all closed issues and pull requests.'

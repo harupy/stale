@@ -61,7 +61,10 @@ describe('Issue', (): void => {
       ignoreUpdates: false,
       ignoreIssueUpdates: undefined,
       ignorePrUpdates: undefined,
-      exemptDraftPr: false
+      exemptDraftPr: false,
+      mlflow: false,
+      daysSinceIssueCreated: 0,
+      daysSinceLastCommentCreated: 0
     };
     issueInterface = {
       title: 'dummy-title',

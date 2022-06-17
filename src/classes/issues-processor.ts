@@ -343,7 +343,10 @@ export class IssuesProcessor {
         issueLogger.info(
           `Days since the last comment was posted: ${daysSinceLastCommentCreated}`
         );
-        if (!isBotComment && daysSinceLastCommentCreated > 14) {
+        if (
+          !isBotComment &&
+          daysSinceLastCommentCreated > this.options.daysSinceLastCommentCreated
+        ) {
           const lastCommentPostedByMaintainer = lastComment.user
             ? this.isPostedByMaintainer(lastComment.user.login)
             : false;
@@ -372,7 +375,10 @@ export class IssuesProcessor {
           return;
         }
       } else {
-        if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
+        if (
+          !hasMaintainerAssignee &&
+          daysSinceIssueCreated > this.options.daysSinceIssueCreated
+        ) {
           issueLogger.info('This issue has no assignees');
           await this.createComment(
             issue,

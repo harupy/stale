@@ -51,5 +51,7 @@ export const DefaultProcessorOptions: IIssuesProcessorOptions = Object.freeze({
   ignoreIssueUpdates: undefined,
   ignorePrUpdates: undefined,
   exemptDraftPr: false,
-  mlflow: false
+  mlflow: false,
+  daysSinceIssueCreated: 7,
+  daysSinceLastCommentCreated: 14
 });

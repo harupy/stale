@@ -16,3 +16,5 @@ jobs:
           # Never stale/close pull requests
           days-before-pr-stale: -1
           days-before-pr-close: -1
+          days-since-issue-created: 0
+          days-since-last-comment-created: 0

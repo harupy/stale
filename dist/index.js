@@ -556,7 +556,8 @@ class IssuesProcessor {
                         ? IssuesProcessor._getDaysSince(lastComment.created_at)
                         : 0;
                     issueLogger.info(`Days since the last comment was posted: ${daysSinceLastCommentCreated}`);
-                    if (!isBotComment && daysSinceLastCommentCreated > 14) {
+                    if (!isBotComment &&
+                        daysSinceLastCommentCreated > this.options.daysSinceLastCommentCreated) {
                         const lastCommentPostedByMaintainer = lastComment.user
                             ? this.isPostedByMaintainer(lastComment.user.login)
                             : false;
@@ -579,7 +580,8 @@ class IssuesProcessor {
                     }
                 }
                 else {
-                    if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
+                    if (!hasMaintainerAssignee &&
+                        daysSinceIssueCreated > this.options.daysSinceIssueCreated) {
                         issueLogger.info('This issue has no assignees');
                         yield this.createComment(issue, 'Reminder to MLflow maintainers. Please assign a maintainer to this issue and start triaging.');
                         return;
@@ -2295,7 +2297,9 @@ function _getAndValidateArgs() {
         ignoreIssueUpdates: _toOptionalBoolean('ignore-issue-updates'),
         ignorePrUpdates: _toOptionalBoolean('ignore-pr-updates'),
         exemptDraftPr: core.getInput('exempt-draft-pr') === 'true',
-        mlflow: true
+        mlflow: true,
+        daysSinceIssueCreated: parseInt(core.getInput('days-since-issue-created')),
+        daysSinceLastCommentCreated: parseInt(core.getInput('days-since-last-comment-created'))
     };
     for (const numberInput of [
         'days-before-stale',

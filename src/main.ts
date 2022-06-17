@@ -89,7 +89,11 @@ function _getAndValidateArgs(): IIssuesProcessorOptions {
     ignoreIssueUpdates: _toOptionalBoolean('ignore-issue-updates'),
     ignorePrUpdates: _toOptionalBoolean('ignore-pr-updates'),
     exemptDraftPr: core.getInput('exempt-draft-pr') === 'true',
-    mlflow: true
+    mlflow: true,
+    daysSinceIssueCreated: parseInt(core.getInput('days-since-issue-created')),
+    daysSinceLastCommentCreated: parseInt(
+      core.getInput('days-since-last-comment-created')
+    )
   };
 
   for (const numberInput of [
