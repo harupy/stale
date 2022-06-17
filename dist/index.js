@@ -268,6 +268,7 @@ class Issue {
         this.operations = new operations_1.Operations();
         this._options = options;
         this.title = issue.title;
+        this.user = issue.user;
         this.number = issue.number;
         this.created_at = issue.created_at;
         this.updated_at = issue.updated_at;
@@ -444,25 +445,6 @@ class IssuesProcessor {
     isPostedByMaintainer(login) {
         return this.isMaintainer(login);
     }
-    listAllIssueComments(issue) {
-        var _a;
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementFetchedItemsCommentsCount();
-                const comments = yield this.client.paginate(this.client.rest.issues.listComments, {
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    issue_number: issue.number,
-                    per_page: 100
-                });
-                return comments;
-            }
-            catch (error) {
-                this._logger.error(`List issue comments error: ${error.message}`);
-                return Promise.resolve([]);
-            }
-        });
-    }
     processIssues(page = 1) {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
@@ -555,28 +537,29 @@ class IssuesProcessor {
                 issueLogger.info(logger_service_1.LoggerService.white('└──'), `Continuing the process for this $$type`);
             }
             if (this.options.mlflow && !issue.isPullRequest) {
-                const comments = yield this.listAllIssueComments(issue);
+                const comments = yield this.listIssueComments(issue, issue.created_at);
                 issueLogger.info(`This issue has ${comments.length} comments`);
                 const hasMaintainerAssignee = issue.assignees.some(user => this.isMaintainer(user.login));
                 issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
                 const daysSinceIssueCreated = IssuesProcessor._getDaysSince(issue.created_at);
-                const mentionAssignees = issue.assignees
-                    .map(({ login }) => `@${login}`)
-                    .join(' ');
                 if (comments.length > 0) {
                     const lastComment = comments[0];
                     issueLogger.info(`Last comment was posted by ${(_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.login}`);
                     const isBotComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
+                    issueLogger.info(`Is this a bot comment? ${isBotComment}`);
                     const lastCommentPostedByMaintainer = lastComment.user && this.isPostedByMaintainer(lastComment.user.login);
+                    issueLogger.info(`Did a maintainer post the last comment posted? ${lastCommentPostedByMaintainer}`);
                     const daysSinceLastCommentCreated = lastComment.created_at
                         ? IssuesProcessor._getDaysSince(lastComment.created_at)
                         : 0;
+                    issueLogger.info(`Days since the last comment was posted: ${daysSinceLastCommentCreated}`);
                     if (!isBotComment && daysSinceLastCommentCreated > 14) {
                         if (lastCommentPostedByMaintainer) {
-                            yield this.createComment(issue, `${mentionAssignees} Any updates?`);
+                            const mention = issue.user ? `@${issue.user.login}` : '';
+                            yield this.createComment(issue, `${mention} Any updates?`);
                         }
                         else {
-                            yield this.createComment(issue, `'Hi, MLflow maintainers. Please reply to the comment.'`);
+                            yield this.createComment(issue, 'Reminder to MLflow maintainers. Please reply to the comment.');
                             return;
                         }
                     }
@@ -584,7 +567,7 @@ class IssuesProcessor {
                 else {
                     if (!hasMaintainerAssignee && daysSinceIssueCreated > 7) {
                         issueLogger.info('This issue has no assignees');
-                        yield this.createComment(issue, 'Hi, MLflow maintainers. Please assign a maintainer to this issue and triage it.');
+                        yield this.createComment(issue, 'Reminder to MLflow maintainers. Please assign a maintainer to this issue and start triaging.');
                         return;
                     }
                 }
@@ -725,13 +708,14 @@ class IssuesProcessor {
             try {
                 this._consumeIssueOperation(issue);
                 (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementFetchedItemsCommentsCount();
-                const comments = yield this.client.rest.issues.listComments({
+                const comments = yield this.client.paginate(this.client.rest.issues.listComments, {
                     owner: github_1.context.repo.owner,
                     repo: github_1.context.repo.repo,
                     issue_number: issue.number,
-                    since: sinceDate
+                    since: sinceDate,
+                    per_page: 100
                 });
-                return comments.data;
+                return comments;
             }
             catch (error) {
                 this._logger.error(`List issue comments error: ${error.message}`);
