@@ -486,7 +486,7 @@ class IssuesProcessor {
         });
     }
     processIssue(issue, labelsToAddWhenUnstale, labelsToRemoveWhenUnstale) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
             (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementProcessedItemsCount(issue);
             const issueLogger = new issue_logger_1.IssueLogger(issue);
@@ -577,6 +577,11 @@ class IssuesProcessor {
                     const hasMaintainerComment = comments.some(({ user }) => user ? this.isMaintainer(user.login) : false);
                     if (!hasMaintainerComment) {
                         issueLogger.info('This issue has no comments from maintainers');
+                        return;
+                    }
+                    if (isBotComment &&
+                        ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes('Reminder to Mlflow maintainers'))) {
+                        issueLogger.info('The last comment is a reminder to maintainers');
                         return;
                     }
                 }

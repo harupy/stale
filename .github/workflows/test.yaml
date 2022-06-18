@@ -13,8 +13,8 @@ jobs:
           days-before-stale: 1
           days-before-close: 1
           start-date: '2022-06-16T00:00:00Z'
-          # Never stale/close pull requests
           days-before-pr-stale: -1
           days-before-pr-close: -1
+          # Set to 0 for testing
           days-since-issue-created: 0
           days-since-last-comment-created: 0

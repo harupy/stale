@@ -381,6 +381,14 @@ export class IssuesProcessor {
           issueLogger.info('This issue has no comments from maintainers');
           return;
         }
+
+        if (
+          isBotComment &&
+          lastComment.body?.includes('Reminder to Mlflow maintainers')
+        ) {
+          issueLogger.info('The last comment is a reminder to maintainers');
+          return;
+        }
       } else {
         issueLogger.info(
           `Days since this issue was posted: ${IssuesProcessor._getDaysSince(
