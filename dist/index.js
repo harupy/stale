@@ -540,58 +540,65 @@ class IssuesProcessor {
                 issueLogger.info(`The option ${issueLogger.createOptionLink(option_1.Option.OnlyLabels)} was not specified`);
                 issueLogger.info(logger_service_1.LoggerService.white('└──'), `Continuing the process for this $$type`);
             }
-            if (this.options.mlflow && !issue.isPullRequest) {
-                const hasClosingPr = issue.labels.some(({ name }) => name === 'has-closing-pr');
-                if (hasClosingPr) {
-                    issueLogger.info('This issue has a closing PR');
-                    return;
-                }
-                const comments = yield this.listIssueComments(issue, issue.created_at);
-                issueLogger.info(`This issue has ${comments.length} comments`);
-                const hasMaintainerAssignee = issue.assignees.some(user => this.isMaintainer(user.login));
-                issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
-                if (comments.length > 0) {
-                    const lastComment = comments[comments.length - 1];
-                    issueLogger.info(`Last comment was posted by ${(_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.login}`);
-                    const isBotComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
-                    issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
-                    const createdAt = lastComment.created_at || IssuesProcessor._getNowTimestamp();
-                    issueLogger.info(`Days since the last comment was posted: ${IssuesProcessor._getDaysSince(createdAt).toFixed(2)}`);
-                    if (!isBotComment &&
-                        !IssuesProcessor._updatedSince(createdAt, this.options.daysSinceLastCommentCreated)) {
-                        const lastCommentPostedByMaintainer = lastComment.user
-                            ? this.isPostedByMaintainer(lastComment.user.login)
-                            : false;
-                        issueLogger.info(`Did a maintainer post the last comment? ${lastCommentPostedByMaintainer}`);
-                        if (lastCommentPostedByMaintainer) {
-                            const mention = issue.user ? `@${issue.user.login}` : '';
-                            yield this.createComment(issue, `${mention} Any updates?`);
-                            return;
-                        }
-                        else {
-                            yield this.createComment(issue, 'Reminder to MLflow maintainers. Please reply to the comment.');
-                            return;
-                        }
-                    }
-                    // We should not mark an issue as stale if it has no comments from maintainers.
-                    const hasMaintainerComment = comments.some(({ user }) => user ? this.isMaintainer(user.login) : false);
-                    if (!hasMaintainerComment) {
-                        issueLogger.info('This issue has no comments from maintainers');
-                        return;
-                    }
-                    if (isBotComment &&
-                        ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes('Reminder to Mlflow maintainers'))) {
-                        issueLogger.info('The last comment is a reminder to maintainers');
-                        return;
-                    }
+            if (this.options.mlflow) {
+                if (issue.isPullRequest) {
+                    // TODO
                 }
                 else {
-                    issueLogger.info(`Days since this issue was posted: ${IssuesProcessor._getDaysSince(issue.created_at).toFixed(2)}`);
-                    if (!hasMaintainerAssignee &&
-                        !IssuesProcessor._updatedSince(issue.created_at, this.options.daysSinceIssueCreated)) {
-                        issueLogger.info('This issue has no assignees');
-                        yield this.createComment(issue, 'Reminder to MLflow maintainers. Please assign a maintainer to this issue and start triaging.');
+                    const hasClosingPr = issue.labels.some(({ name }) => name === 'has-closing-pr');
+                    if (hasClosingPr) {
+                        issueLogger.info('This issue has a closing PR');
                         return;
+                    }
+                    const comments = yield this.listIssueComments(issue, issue.created_at);
+                    issueLogger.info(`This issue has ${comments.length} comments`);
+                    const hasMaintainerAssignee = issue.assignees.some(user => this.isMaintainer(user.login));
+                    issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
+                    if (comments.length > 0) {
+                        const lastComment = comments[comments.length - 1];
+                        issueLogger.info(`Last comment was posted by ${(_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.login}`);
+                        const isBotComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
+                        issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
+                        const createdAt = lastComment.created_at || IssuesProcessor._getNowTimestamp();
+                        const daysSinceCreated = IssuesProcessor._getDaysSince(createdAt);
+                        issueLogger.info(`Days since the last comment was posted: ${daysSinceCreated.toFixed(2)}`);
+                        if (!isBotComment &&
+                            !IssuesProcessor._updatedSince(createdAt, this.options.daysSinceLastCommentCreated)) {
+                            const lastCommentPostedByMaintainer = lastComment.user
+                                ? this.isPostedByMaintainer(lastComment.user.login)
+                                : false;
+                            issueLogger.info(`Did a maintainer post the last comment? ${lastCommentPostedByMaintainer}`);
+                            if (lastCommentPostedByMaintainer) {
+                                const mention = issue.user ? `@${issue.user.login}` : '';
+                                yield this.createComment(issue, `${mention} Any updates?`);
+                                return;
+                            }
+                            else {
+                                yield this.createComment(issue, 'Reminder to MLflow maintainers. Please reply to the comment.');
+                                return;
+                            }
+                        }
+                        // We should not mark an issue as stale if it has no comments from maintainers.
+                        const hasMaintainerComment = comments.some(({ user }) => user ? this.isMaintainer(user.login) : false);
+                        if (!hasMaintainerComment) {
+                            issueLogger.info('This issue has no comments from maintainers');
+                            return;
+                        }
+                        if (isBotComment &&
+                            ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes('Reminder to Mlflow maintainers'))) {
+                            issueLogger.info('The last comment is a reminder to maintainers');
+                            return;
+                        }
+                    }
+                    else {
+                        const daysSinceCreated = IssuesProcessor._getDaysSince(issue.created_at);
+                        issueLogger.info(`Days since this issue was created: ${daysSinceCreated.toFixed(2)}`);
+                        if (!hasMaintainerAssignee &&
+                            !IssuesProcessor._updatedSince(issue.created_at, this.options.daysSinceIssueCreated)) {
+                            issueLogger.info('This issue has no assignees');
+                            yield this.createComment(issue, 'Reminder to MLflow maintainers. Please assign a maintainer to this issue and start triaging.');
+                            return;
+                        }
                     }
                 }
             }
