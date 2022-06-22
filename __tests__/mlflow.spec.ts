@@ -154,7 +154,7 @@ test('ask the issue author to reply when the last comment was posted by a mainta
 
   expect(createCommentSpy).toHaveBeenCalledWith(
     expect.anything(),
-    '@non-maintainer Any updates?'
+    '@non-maintainer Any updates here?'
   );
 });
 
@@ -270,12 +270,7 @@ test('skip stale issues', async () => {
       getDaysAgoTimestamp(15),
       getDaysAgoTimestamp(15),
       false,
-      ['stale'],
-      false,
-      false,
-      undefined,
-      [],
-      {login: 'non-maintainer', type: 'User'}
+      ['stale']
     )
   ];
   const processor = new IssuesProcessorMock(
@@ -284,7 +279,41 @@ test('skip stale issues', async () => {
     async () => [],
     async () => new Date().toDateString(),
     undefined,
-    async () => ['maintainer']
+    async () => []
+  );
+  processor.init();
+
+  const createCommentSpy = jest
+    .spyOn(processor as any, 'createComment')
+    .mockImplementation(() => {});
+  await processor.processIssues(1);
+
+  expect(createCommentSpy).not.toHaveBeenCalled();
+});
+
+test('skip issues created before start-date', async () => {
+  const opts = {
+    ...DefaultProcessorOptions,
+    removeStaleWhenUpdated: true,
+    mlflow: true,
+    startDate: getDaysAgoTimestamp(0)
+  };
+  const TestIssueList: Issue[] = [
+    generateIssue(
+      opts,
+      1,
+      'An issue with a comment',
+      getDaysAgoTimestamp(15),
+      getDaysAgoTimestamp(15)
+    )
+  ];
+  const processor = new IssuesProcessorMock(
+    opts,
+    async p => (p === 1 ? TestIssueList : []),
+    async () => [],
+    async () => new Date().toDateString(),
+    undefined,
+    async () => []
   );
   processor.init();
 

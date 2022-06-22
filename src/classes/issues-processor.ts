@@ -45,7 +45,7 @@ export class IssuesProcessor {
     return diffTime / (1000 * 60 * 60 * 24);
   }
 
-  private static _getNowTimestamp(): string {
+  private static _getNow(): string {
     const withoutMilliseconds = new Date().toISOString().split('.')[0];
     return `${withoutMilliseconds}Z`;
   }
@@ -129,6 +129,8 @@ export class IssuesProcessor {
   }
 
   private async createComment(issue: Issue, body: string) {
+    const issueLogger: IssueLogger = new IssueLogger(issue);
+    issueLogger.info(`Creating a comment (body: ${body})...`);
     if (!this.options.debugOnly) {
       this._consumeIssueOperation(issue);
       await this.client.rest.issues.createComment({
@@ -315,7 +317,20 @@ export class IssuesProcessor {
       );
     }
 
-    if (this.options.mlflow && !issue.isStale) {
+    if (this.options.mlflow) {
+      const {startDate, daysBeforeReplyReminder, daysBeforeAssigneeReminder} =
+        this.options;
+      if (
+        issue.isStale ||
+        (startDate &&
+          !isDateMoreRecentThan(
+            new Date(issue.created_at),
+            new Date(startDate)
+          ))
+      ) {
+        return;
+      }
+
       const reminderToMaintainers = 'Reminder to MLflow maintainers';
       if (issue.isPullRequest) {
         // TODO
@@ -344,9 +359,10 @@ export class IssuesProcessor {
           const isBotComment = lastComment.user?.type !== 'User';
           issueLogger.info(`Did a bot post the last comment? ${isBotComment}`);
 
-          const createdAt =
-            lastComment.created_at || IssuesProcessor._getNowTimestamp();
-          const daysSinceCreated = IssuesProcessor._getDaysSince(createdAt);
+          const lastCommentCreatedAt =
+            lastComment.created_at || IssuesProcessor._getNow();
+          const daysSinceCreated =
+            IssuesProcessor._getDaysSince(lastCommentCreatedAt);
           issueLogger.info(
             `Days since the last comment was posted: ${daysSinceCreated.toFixed(
               2
@@ -355,8 +371,8 @@ export class IssuesProcessor {
           if (
             !isBotComment &&
             !IssuesProcessor._updatedSince(
-              createdAt,
-              this.options.daysBeforeReplyReminder
+              lastCommentCreatedAt,
+              daysBeforeReplyReminder
             )
           ) {
             const lastCommentPostedByMaintainer = lastComment.user
@@ -367,7 +383,7 @@ export class IssuesProcessor {
             );
             if (lastCommentPostedByMaintainer) {
               const mention = issue.user ? `@${issue.user.login}` : '';
-              await this.createComment(issue, `${mention} Any updates?`);
+              await this.createComment(issue, `${mention} Any updates here?`);
               return;
             } else {
               await this.createComment(
@@ -378,7 +394,7 @@ export class IssuesProcessor {
             }
           }
 
-          // We should not mark an issue as stale if it has no comments from maintainers.
+          // We should not stale an issue if it has no comments from maintainers
           const hasMaintainerComment = comments.some(({user}) =>
             user ? this.isMaintainer(user.login) : false
           );
@@ -391,7 +407,9 @@ export class IssuesProcessor {
             isBotComment &&
             lastComment.body?.includes(reminderToMaintainers)
           ) {
-            issueLogger.info('The last comment is a reminder to maintainers');
+            issueLogger.info(
+              'The last comment is a reminder to maintainers posted by a bot'
+            );
             return;
           }
         } else {
@@ -408,7 +426,7 @@ export class IssuesProcessor {
             !hasMaintainerAssignee &&
             !IssuesProcessor._updatedSince(
               issue.created_at,
-              this.options.daysBeforeAssigneeReminder
+              daysBeforeAssigneeReminder
             )
           ) {
             issueLogger.info('This issue has no assignees');
