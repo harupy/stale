@@ -540,7 +540,7 @@ class IssuesProcessor {
                 issueLogger.info(`The option ${issueLogger.createOptionLink(option_1.Option.OnlyLabels)} was not specified`);
                 issueLogger.info(logger_service_1.LoggerService.white('└──'), `Continuing the process for this $$type`);
             }
-            if (this.options.mlflow) {
+            if (this.options.mlflow && !issue.isStale) {
                 const reminderToMaintainers = 'Reminder to MLflow maintainers';
                 if (issue.isPullRequest) {
                     // TODO
