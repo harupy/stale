@@ -103,7 +103,7 @@ test('ask maintainers to reply when the last comment was posted by a non-maintai
 
   expect(createCommentSpy).toHaveBeenCalledWith(
     expect.anything(),
-    'Reminder to MLflow maintainers. Please reply to the comment.'
+    'Reminder to MLflow maintainers. Please reply to comments.'
   );
 });
 

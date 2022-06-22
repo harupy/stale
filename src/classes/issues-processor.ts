@@ -328,7 +328,9 @@ export class IssuesProcessor {
           return;
         }
         const comments = await this.listIssueComments(issue, issue.created_at);
-        issueLogger.info(`This issue has ${comments.length} comments`);
+        issueLogger.info(
+          `The number of comments in this issue: ${comments.length}`
+        );
 
         issueLogger.info(
           `Assignees on this issue: ${issue.assignees.map(({login}) => login)}`
@@ -340,7 +342,7 @@ export class IssuesProcessor {
             `The last comment was posted by ${lastComment.user?.login}`
           );
           const isBotComment = lastComment.user?.type !== 'User';
-          issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
+          issueLogger.info(`Did a bot post the last comment? ${isBotComment}`);
 
           const createdAt =
             lastComment.created_at || IssuesProcessor._getNowTimestamp();
@@ -370,7 +372,7 @@ export class IssuesProcessor {
             } else {
               await this.createComment(
                 issue,
-                `${reminderToMaintainers}. Please make a reply.`
+                `${reminderToMaintainers}. Please reply to comments.`
               );
               return;
             }

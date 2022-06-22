@@ -552,13 +552,13 @@ class IssuesProcessor {
                         return;
                     }
                     const comments = yield this.listIssueComments(issue, issue.created_at);
-                    issueLogger.info(`This issue has ${comments.length} comments`);
+                    issueLogger.info(`The number of comments in this issue: ${comments.length}`);
                     issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
                     if (comments.length > 0) {
                         const lastComment = comments[comments.length - 1];
                         issueLogger.info(`The last comment was posted by ${(_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.login}`);
                         const isBotComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
-                        issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
+                        issueLogger.info(`Did a bot post the last comment? ${isBotComment}`);
                         const createdAt = lastComment.created_at || IssuesProcessor._getNowTimestamp();
                         const daysSinceCreated = IssuesProcessor._getDaysSince(createdAt);
                         issueLogger.info(`Days since the last comment was posted: ${daysSinceCreated.toFixed(2)}`);
@@ -574,7 +574,7 @@ class IssuesProcessor {
                                 return;
                             }
                             else {
-                                yield this.createComment(issue, `${reminderToMaintainers}. Please make a reply.`);
+                                yield this.createComment(issue, `${reminderToMaintainers}. Please reply to comments.`);
                                 return;
                             }
                         }
