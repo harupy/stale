@@ -15,7 +15,7 @@ on:
         required: false
         default: 0
       daysBeforeReplyReminder:
-        description: 'days-since-last-created'
+        description: 'days-before-reply-reminder'
         required: false
         default: 0
 
