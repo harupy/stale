@@ -13,7 +13,7 @@ function getDaysAgoTimestamp(
   return `${withoutMilliseconds}Z`;
 }
 
-test('ask maintainers to assign a maintainer when an issue has no assignees and comments', async () => {
+test('Ask maintainers to assign a maintainer when an issue has no assignees and comments', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -54,7 +54,7 @@ test('ask maintainers to assign a maintainer when an issue has no assignees and 
   );
 });
 
-test('ask maintainers to reply when the last comment was posted by a non-maintainer user', async () => {
+test('Ask maintainers to reply when the last comment was posted by a non-maintainer user', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -107,7 +107,7 @@ test('ask maintainers to reply when the last comment was posted by a non-maintai
   );
 });
 
-test('ask the issue author to reply when the last comment was posted by a maintainer user', async () => {
+test('Ask the issue author to reply when the last comment was posted by a maintainer user', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -158,7 +158,7 @@ test('ask the issue author to reply when the last comment was posted by a mainta
   );
 });
 
-test('ignore comments posted by a bot', async () => {
+test('Ignore comments posted by a bot', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -207,7 +207,7 @@ test('ignore comments posted by a bot', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('skip posting comments if a has-closing-pr label is applied', async () => {
+test('Ignore issues that have a has-closing-pr label', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -256,7 +256,7 @@ test('skip posting comments if a has-closing-pr label is applied', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('skip stale issues', async () => {
+test('Ignore stale issues', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
@@ -291,7 +291,7 @@ test('skip stale issues', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('skip issues created before start-date', async () => {
+test('Ignore issues created before start-date', async () => {
   const opts = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
