@@ -18,6 +18,8 @@ on:
         description: 'days-before-reply-reminder'
         required: false
         default: 0
+  schedule:
+    - cron: '0 0 * * *'
 
 jobs:
   stale:
