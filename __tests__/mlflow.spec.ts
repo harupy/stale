@@ -1,7 +1,10 @@
 import {Issue} from '../src/classes/issue';
+import {IUser} from '../src/interfaces/user';
+import {IIssuesProcessorOptions} from '../src/interfaces/issues-processor-options';
+import {IsoDateString} from '../src/types/iso-date-string';
 import {IssuesProcessorMock} from './classes/issues-processor-mock';
 import {DefaultProcessorOptions} from './constants/default-processor-options';
-import {generateIssue} from './functions/generate-issue';
+import {generateIssue as _generateIssue} from './functions/generate-issue';
 
 function getDaysAgoTimestamp(
   numOfDays: number,
@@ -13,29 +16,69 @@ function getDaysAgoTimestamp(
   return `${withoutMilliseconds}Z`;
 }
 
-test('Ask maintainers to assign a maintainer when an issue has no assignees and comments', async () => {
-  const opts = {
+type GenerateIssueParameters = {
+  options: IIssuesProcessorOptions;
+  id: number;
+  title: string;
+  updatedAt: IsoDateString;
+  createdAt: IsoDateString;
+  isPullRequest?: boolean;
+  labels?: string[];
+  isClosed?: boolean;
+  isLocked?: boolean;
+  milestone?: string;
+  assignees?: string[];
+  user?: IUser;
+};
+
+function generateIssue({
+  options,
+  id,
+  title,
+  updatedAt,
+  createdAt,
+  isPullRequest = false,
+  labels = [],
+  isClosed = false,
+  isLocked = false,
+  milestone = undefined,
+  assignees = [],
+  user = undefined
+}: GenerateIssueParameters): Issue {
+  return _generateIssue(
+    options,
+    id,
+    title,
+    updatedAt,
+    createdAt,
+    isPullRequest,
+    labels,
+    isClosed,
+    isLocked,
+    milestone,
+    assignees,
+    user
+  );
+}
+
+test('Remind maintainers to assign a maintainer when an issue has no assignees and comments', async () => {
+  const options = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
     mlflow: true
   };
   const TestIssueList: Issue[] = [
-    generateIssue(
-      opts,
-      1,
-      'An issue that has no assignees and no comments',
-      getDaysAgoTimestamp(8),
-      getDaysAgoTimestamp(8),
-      false,
-      [],
-      false,
-      false,
-      undefined,
-      ['non-maintainer']
-    )
+    generateIssue({
+      options,
+      id: 1,
+      title: 'Issue',
+      updatedAt: getDaysAgoTimestamp(8),
+      createdAt: getDaysAgoTimestamp(8),
+      assignees: ['non-maintainer']
+    })
   ];
   const processor = new IssuesProcessorMock(
-    opts,
+    options,
     async p => (p === 1 ? TestIssueList : []),
     async () => [],
     async () => new Date().toDateString(),
@@ -54,29 +97,24 @@ test('Ask maintainers to assign a maintainer when an issue has no assignees and 
   );
 });
 
-test('Ask maintainers to reply when the last comment was posted by a non-maintainer user', async () => {
-  const opts = {
+test('Remind maintainers to reply when the last comment was posted by a non-maintainer user', async () => {
+  const options = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
     mlflow: true
   };
   const TestIssueList: Issue[] = [
-    generateIssue(
-      opts,
-      1,
-      'An issue with a comment',
-      getDaysAgoTimestamp(15),
-      getDaysAgoTimestamp(15),
-      false,
-      [],
-      false,
-      false,
-      undefined,
-      ['non-maintainer']
-    )
+    generateIssue({
+      options,
+      id: 1,
+      title: 'Issue',
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15),
+      assignees: ['non-maintainer']
+    })
   ];
   const processor = new IssuesProcessorMock(
-    opts,
+    options,
     async p => (p === 1 ? TestIssueList : []),
     async () => [
       {
@@ -107,30 +145,25 @@ test('Ask maintainers to reply when the last comment was posted by a non-maintai
   );
 });
 
-test('Ask the issue author to reply when the last comment was posted by a maintainer user', async () => {
-  const opts = {
+test('Remind issue author to reply when the last comment was posted by a maintainer user', async () => {
+  const options = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
     mlflow: true
   };
   const TestIssueList: Issue[] = [
-    generateIssue(
-      opts,
-      1,
-      'An issue with a comment',
-      getDaysAgoTimestamp(15),
-      getDaysAgoTimestamp(15),
-      false,
-      [],
-      false,
-      false,
-      undefined,
-      ['non-maintainer'],
-      {login: 'non-maintainer', type: 'User'}
-    )
+    generateIssue({
+      options,
+      id: 1,
+      title: 'Issue',
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15),
+      assignees: ['non-maintainer'],
+      user: {login: 'non-maintainer', type: 'User'}
+    })
   ];
   const processor = new IssuesProcessorMock(
-    opts,
+    options,
     async p => (p === 1 ? TestIssueList : []),
     async () => [
       {
@@ -159,29 +192,22 @@ test('Ask the issue author to reply when the last comment was posted by a mainta
 });
 
 test('Ignore comments posted by a bot', async () => {
-  const opts = {
+  const options = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
     mlflow: true
   };
   const TestIssueList: Issue[] = [
-    generateIssue(
-      opts,
-      1,
-      'An issue with a comment',
-      getDaysAgoTimestamp(15),
-      getDaysAgoTimestamp(15),
-      false,
-      [],
-      false,
-      false,
-      undefined,
-      ['non-maintainer'],
-      {login: 'non-maintainer', type: 'User'}
-    )
+    generateIssue({
+      options,
+      id: 1,
+      title: 'Issue',
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15)
+    })
   ];
   const processor = new IssuesProcessorMock(
-    opts,
+    options,
     async p => (p === 1 ? TestIssueList : []),
     async () => [
       {
@@ -208,43 +234,26 @@ test('Ignore comments posted by a bot', async () => {
 });
 
 test('Ignore issues that have a has-closing-pr label', async () => {
-  const opts = {
+  const options = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
     mlflow: true
   };
   const TestIssueList: Issue[] = [
-    generateIssue(
-      opts,
-      1,
-      'An issue with a comment',
-      getDaysAgoTimestamp(15),
-      getDaysAgoTimestamp(15),
-      false,
-      ['has-closing-pr'],
-      false,
-      false,
-      undefined,
-      ['non-maintainer'],
-      {login: 'non-maintainer', type: 'User'}
-    )
+    generateIssue({
+      options,
+      id: 1,
+      title: 'Issue',
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15),
+      labels: ['has-closing-pr']
+    })
   ];
   const processor = new IssuesProcessorMock(
-    opts,
+    options,
     async p => (p === 1 ? TestIssueList : []),
-    async () => [
-      {
-        user: {
-          login: 'maintainer',
-          type: 'User'
-        },
-        body: 'comment',
-        created_at: getDaysAgoTimestamp(15)
-      }
-    ],
-    async () => new Date().toDateString(),
-    undefined,
-    async () => ['maintainer']
+    async () => [],
+    async () => new Date().toDateString()
   );
   processor.init();
 
@@ -257,29 +266,26 @@ test('Ignore issues that have a has-closing-pr label', async () => {
 });
 
 test('Ignore stale issues', async () => {
-  const opts = {
+  const options = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
     mlflow: true
   };
   const TestIssueList: Issue[] = [
-    generateIssue(
-      opts,
-      1,
-      'An issue with a comment',
-      getDaysAgoTimestamp(15),
-      getDaysAgoTimestamp(15),
-      false,
-      ['stale']
-    )
+    generateIssue({
+      options,
+      id: 1,
+      title: 'Issue',
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15),
+      labels: ['stale']
+    })
   ];
   const processor = new IssuesProcessorMock(
-    opts,
+    options,
     async p => (p === 1 ? TestIssueList : []),
     async () => [],
-    async () => new Date().toDateString(),
-    undefined,
-    async () => []
+    async () => new Date().toDateString()
   );
   processor.init();
 
@@ -292,28 +298,27 @@ test('Ignore stale issues', async () => {
 });
 
 test('Ignore issues created before start-date', async () => {
-  const opts = {
+  const options = {
     ...DefaultProcessorOptions,
     removeStaleWhenUpdated: true,
     mlflow: true,
     startDate: getDaysAgoTimestamp(0)
   };
   const TestIssueList: Issue[] = [
-    generateIssue(
-      opts,
-      1,
-      'An issue with a comment',
-      getDaysAgoTimestamp(15),
-      getDaysAgoTimestamp(15)
-    )
+    generateIssue({
+      options,
+      id: 1,
+      title: 'Issue',
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15),
+      labels: ['stale']
+    })
   ];
   const processor = new IssuesProcessorMock(
-    opts,
+    options,
     async p => (p === 1 ? TestIssueList : []),
     async () => [],
-    async () => new Date().toDateString(),
-    undefined,
-    async () => []
+    async () => new Date().toDateString()
   );
   processor.init();
 
