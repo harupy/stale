@@ -439,12 +439,17 @@ class IssuesProcessor {
             issueLogger.info(`Creating a comment (body: ${body})...`);
             if (!this.options.debugOnly) {
                 this._consumeIssueOperation(issue);
-                yield this.client.rest.issues.createComment({
-                    owner: github_1.context.repo.owner,
-                    repo: github_1.context.repo.repo,
-                    issue_number: issue.number,
-                    body
-                });
+                try {
+                    yield this.client.rest.issues.createComment({
+                        owner: github_1.context.repo.owner,
+                        repo: github_1.context.repo.repo,
+                        issue_number: issue.number,
+                        body
+                    });
+                }
+                catch (error) {
+                    issueLogger.error(`Error when creating a comment: ${error.message}`);
+                }
             }
         });
     }
@@ -2259,7 +2264,7 @@ function _run() {
         try {
             const args = _getAndValidateArgs();
             const issueProcessor = new issues_processor_1.IssuesProcessor(args);
-            yield issueProcessor.init();
+            yield issueProcessor.setMaintainers();
             yield issueProcessor.processIssues();
             yield processOutput(issueProcessor.staleIssues, issueProcessor.closedIssues);
         }

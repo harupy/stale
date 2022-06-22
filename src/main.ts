@@ -9,7 +9,7 @@ async function _run(): Promise<void> {
     const args = _getAndValidateArgs();
 
     const issueProcessor: IssuesProcessor = new IssuesProcessor(args);
-    await issueProcessor.init();
+    await issueProcessor.setMaintainers();
     await issueProcessor.processIssues();
 
     await processOutput(

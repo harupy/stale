@@ -9,19 +9,20 @@ import {generateIssue as _generateIssue} from './functions/generate-issue';
 function getDaysAgoTimestamp(
   numOfDays: number,
   date: Date = new Date()
-): string {
+): IsoDateString {
   const daysAgo = new Date(date.getTime());
   daysAgo.setDate(date.getDate() - numOfDays);
   const withoutMilliseconds = daysAgo.toISOString().split('.')[0];
   return `${withoutMilliseconds}Z`;
 }
+const today = getDaysAgoTimestamp(0);
 
 type GenerateIssueParameters = {
   options: IIssuesProcessorOptions;
-  id: number;
-  title: string;
-  updatedAt: IsoDateString;
-  createdAt: IsoDateString;
+  id?: number;
+  title?: string;
+  updatedAt?: IsoDateString;
+  createdAt?: IsoDateString;
   isPullRequest?: boolean;
   labels?: string[];
   isClosed?: boolean;
@@ -33,10 +34,10 @@ type GenerateIssueParameters = {
 
 function generateIssue({
   options,
-  id,
-  title,
-  updatedAt,
-  createdAt,
+  id = 1,
+  title = 'Issue',
+  updatedAt = today,
+  createdAt = today,
   isPullRequest = false,
   labels = [],
   isClosed = false,
@@ -64,14 +65,11 @@ function generateIssue({
 test('Remind maintainers to assign a maintainer when an issue has no assignees and comments', async () => {
   const options = {
     ...DefaultProcessorOptions,
-    removeStaleWhenUpdated: true,
     mlflow: true
   };
-  const TestIssueList: Issue[] = [
+  const issues: Issue[] = [
     generateIssue({
       options,
-      id: 1,
-      title: 'Issue',
       updatedAt: getDaysAgoTimestamp(8),
       createdAt: getDaysAgoTimestamp(8),
       assignees: ['non-maintainer']
@@ -79,18 +77,17 @@ test('Remind maintainers to assign a maintainer when an issue has no assignees a
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? TestIssueList : []),
+    async p => (p === 1 ? issues : []),
     async () => [],
     async () => new Date().toDateString(),
     undefined,
     async () => ['maintainer']
   );
-  processor.init();
-  const createCommentSpy = jest
-    .spyOn(processor as any, 'createComment')
-    .mockImplementation(() => {});
+  await processor.setMaintainers();
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
+  expect(createCommentSpy).toHaveBeenCalledTimes(1);
   expect(createCommentSpy).toHaveBeenCalledWith(
     expect.anything(),
     'Reminder to MLflow maintainers. Please assign a maintainer to this issue and start triaging.'
@@ -100,14 +97,12 @@ test('Remind maintainers to assign a maintainer when an issue has no assignees a
 test('Remind maintainers to reply when the last comment was posted by a non-maintainer user', async () => {
   const options = {
     ...DefaultProcessorOptions,
-    removeStaleWhenUpdated: true,
+
     mlflow: true
   };
-  const TestIssueList: Issue[] = [
+  const issues: Issue[] = [
     generateIssue({
       options,
-      id: 1,
-      title: 'Issue',
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15),
       assignees: ['non-maintainer']
@@ -115,7 +110,7 @@ test('Remind maintainers to reply when the last comment was posted by a non-main
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? TestIssueList : []),
+    async p => (p === 1 ? issues : []),
     async () => [
       {
         user: {
@@ -130,15 +125,12 @@ test('Remind maintainers to reply when the last comment was posted by a non-main
     undefined,
     async () => ['maintainer']
   );
-  processor.init();
+  await processor.setMaintainers();
 
-  const createCommentSpy = jest
-    .spyOn(processor as any, 'createComment')
-    .mockImplementation(() => {});
-
-  // process our fake issue list
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
+  expect(createCommentSpy).toHaveBeenCalledTimes(1);
   expect(createCommentSpy).toHaveBeenCalledWith(
     expect.anything(),
     'Reminder to MLflow maintainers. Please reply to comments.'
@@ -148,23 +140,24 @@ test('Remind maintainers to reply when the last comment was posted by a non-main
 test('Remind issue author to reply when the last comment was posted by a maintainer user', async () => {
   const options = {
     ...DefaultProcessorOptions,
-    removeStaleWhenUpdated: true,
+
     mlflow: true
   };
-  const TestIssueList: Issue[] = [
+  const issues: Issue[] = [
     generateIssue({
       options,
-      id: 1,
-      title: 'Issue',
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15),
       assignees: ['non-maintainer'],
-      user: {login: 'non-maintainer', type: 'User'}
+      user: {
+        login: 'non-maintainer',
+        type: 'User'
+      }
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? TestIssueList : []),
+    async p => (p === 1 ? issues : []),
     async () => [
       {
         user: {
@@ -179,12 +172,11 @@ test('Remind issue author to reply when the last comment was posted by a maintai
     undefined,
     async () => ['maintainer']
   );
-  processor.init();
-  const createCommentSpy = jest
-    .spyOn(processor as any, 'createComment')
-    .mockImplementation(() => {});
+  await processor.setMaintainers();
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
+  expect(createCommentSpy).toHaveBeenCalledTimes(1);
   expect(createCommentSpy).toHaveBeenCalledWith(
     expect.anything(),
     '@non-maintainer Any updates here?'
@@ -194,21 +186,18 @@ test('Remind issue author to reply when the last comment was posted by a maintai
 test('Ignore comments posted by a bot', async () => {
   const options = {
     ...DefaultProcessorOptions,
-    removeStaleWhenUpdated: true,
     mlflow: true
   };
-  const TestIssueList: Issue[] = [
+  const issues: Issue[] = [
     generateIssue({
       options,
-      id: 1,
-      title: 'Issue',
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15)
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? TestIssueList : []),
+    async p => (p === 1 ? issues : []),
     async () => [
       {
         user: {
@@ -223,11 +212,9 @@ test('Ignore comments posted by a bot', async () => {
     undefined,
     async () => ['maintainer']
   );
-  processor.init();
+  await processor.setMaintainers();
 
-  const createCommentSpy = jest
-    .spyOn(processor as any, 'createComment')
-    .mockImplementation(() => {});
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();
@@ -236,14 +223,11 @@ test('Ignore comments posted by a bot', async () => {
 test('Ignore issues that have a has-closing-pr label', async () => {
   const options = {
     ...DefaultProcessorOptions,
-    removeStaleWhenUpdated: true,
     mlflow: true
   };
-  const TestIssueList: Issue[] = [
+  const issues: Issue[] = [
     generateIssue({
       options,
-      id: 1,
-      title: 'Issue',
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15),
       labels: ['has-closing-pr']
@@ -251,15 +235,13 @@ test('Ignore issues that have a has-closing-pr label', async () => {
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? TestIssueList : []),
+    async p => (p === 1 ? issues : []),
     async () => [],
     async () => new Date().toDateString()
   );
-  processor.init();
+  await processor.setMaintainers();
 
-  const createCommentSpy = jest
-    .spyOn(processor as any, 'createComment')
-    .mockImplementation(() => {});
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();
@@ -268,30 +250,25 @@ test('Ignore issues that have a has-closing-pr label', async () => {
 test('Ignore stale issues', async () => {
   const options = {
     ...DefaultProcessorOptions,
-    removeStaleWhenUpdated: true,
     mlflow: true
   };
-  const TestIssueList: Issue[] = [
+  const issues: Issue[] = [
     generateIssue({
       options,
-      id: 1,
-      title: 'Issue',
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15),
-      labels: ['stale']
+      labels: ['Stale']
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? TestIssueList : []),
+    async p => (p === 1 ? issues : []),
     async () => [],
     async () => new Date().toDateString()
   );
-  processor.init();
+  await processor.setMaintainers();
 
-  const createCommentSpy = jest
-    .spyOn(processor as any, 'createComment')
-    .mockImplementation(() => {});
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();
@@ -300,31 +277,25 @@ test('Ignore stale issues', async () => {
 test('Ignore issues created before start-date', async () => {
   const options = {
     ...DefaultProcessorOptions,
-    removeStaleWhenUpdated: true,
     mlflow: true,
-    startDate: getDaysAgoTimestamp(0)
+    startDate: today
   };
-  const TestIssueList: Issue[] = [
+  const issues: Issue[] = [
     generateIssue({
       options,
-      id: 1,
-      title: 'Issue',
       updatedAt: getDaysAgoTimestamp(15),
-      createdAt: getDaysAgoTimestamp(15),
-      labels: ['stale']
+      createdAt: getDaysAgoTimestamp(15)
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? TestIssueList : []),
+    async p => (p === 1 ? issues : []),
     async () => [],
     async () => new Date().toDateString()
   );
-  processor.init();
+  await processor.setMaintainers();
 
-  const createCommentSpy = jest
-    .spyOn(processor as any, 'createComment')
-    .mockImplementation(() => {});
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();

@@ -128,17 +128,21 @@ export class IssuesProcessor {
     return this.maintainers.includes(login);
   }
 
-  private async createComment(issue: Issue, body: string) {
+  async createComment(issue: Issue, body: string) {
     const issueLogger: IssueLogger = new IssueLogger(issue);
     issueLogger.info(`Creating a comment (body: ${body})...`);
     if (!this.options.debugOnly) {
       this._consumeIssueOperation(issue);
-      await this.client.rest.issues.createComment({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        issue_number: issue.number,
-        body
-      });
+      try {
+        await this.client.rest.issues.createComment({
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          issue_number: issue.number,
+          body
+        });
+      } catch (error) {
+        issueLogger.error(`Error when creating a comment: ${error.message}`);
+      }
     }
   }
 

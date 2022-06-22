@@ -37,8 +37,6 @@ export class IssuesProcessorMock extends IssuesProcessor {
       this.getPullRequest = getPullRequest;
     }
 
-    if (getMaintainers) {
-      this.getMaintainers = getMaintainers;
-    }
+    this.getMaintainers = getMaintainers || (async () => []);
   }
 }
