@@ -315,7 +315,7 @@ export class IssuesProcessor {
       );
     }
 
-    if (this.options.mlflow) {
+    if (this.options.mlflow && !issue.isStale) {
       const reminderToMaintainers = 'Reminder to MLflow maintainers';
       if (issue.isPullRequest) {
         // TODO
