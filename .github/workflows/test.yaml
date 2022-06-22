@@ -32,6 +32,5 @@ jobs:
           start-date: '2022-06-16T00:00:00Z'
           days-before-pr-stale: -1
           days-before-pr-close: -1
-          # Set to 0 for testing
           days-before-assignee-reminder: ${{ inputs.daysBeforeAssigneeReminder }}
           days-before-reply-reminder: ${{ inputs.daysBeforeReplyReminder }}
