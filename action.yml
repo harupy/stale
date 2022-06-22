@@ -193,11 +193,11 @@ inputs:
     default: ''
     required: false
   # Special options for mlflow
-  days-since-issue-created:
+  days-before-assignee-reminder:
     description: 'Maintainers should assign a maintainer to an issue within a specified number of days.'
     default: '7'
     required: false
-  days-since-last-comment-created:
+  days-before-reply-reminder:
     description: 'Maintainers should reply to the last comment in an issue within a specified number of days.'
     default: '14'
     required: false

@@ -90,9 +90,11 @@ function _getAndValidateArgs(): IIssuesProcessorOptions {
     ignorePrUpdates: _toOptionalBoolean('ignore-pr-updates'),
     exemptDraftPr: core.getInput('exempt-draft-pr') === 'true',
     mlflow: true,
-    daysSinceIssueCreated: parseInt(core.getInput('days-since-issue-created')),
-    daysSinceLastCommentCreated: parseInt(
-      core.getInput('days-since-last-comment-created')
+    daysBeforeAssigneeReminder: parseInt(
+      core.getInput('days-before-assignee-reminder')
+    ),
+    daysBeforeReplyReminder: parseInt(
+      core.getInput('days-before-reply-reminder')
     )
   };
 

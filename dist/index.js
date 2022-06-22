@@ -563,7 +563,7 @@ class IssuesProcessor {
                         const daysSinceCreated = IssuesProcessor._getDaysSince(createdAt);
                         issueLogger.info(`Days since the last comment was posted: ${daysSinceCreated.toFixed(2)}`);
                         if (!isBotComment &&
-                            !IssuesProcessor._updatedSince(createdAt, this.options.daysSinceLastCommentCreated)) {
+                            !IssuesProcessor._updatedSince(createdAt, this.options.daysBeforeReplyReminder)) {
                             const lastCommentPostedByMaintainer = lastComment.user
                                 ? this.isPostedByMaintainer(lastComment.user.login)
                                 : false;
@@ -595,7 +595,7 @@ class IssuesProcessor {
                         issueLogger.info(`Days since this issue was created: ${daysSinceCreated.toFixed(2)}`);
                         const hasMaintainerAssignee = issue.assignees.some(user => this.isMaintainer(user.login));
                         if (!hasMaintainerAssignee &&
-                            !IssuesProcessor._updatedSince(issue.created_at, this.options.daysSinceIssueCreated)) {
+                            !IssuesProcessor._updatedSince(issue.created_at, this.options.daysBeforeAssigneeReminder)) {
                             issueLogger.info('This issue has no assignees');
                             yield this.createComment(issue, `${reminderToMaintainers}. Please assign a maintainer to this issue and start triaging.`);
                             return;
@@ -2001,8 +2001,8 @@ var Option;
     Option["IgnorePrUpdates"] = "ignore-pr-updates";
     Option["ExemptDraftPr"] = "exempt-draft-pr";
     Option["Mlflow"] = "mlflow";
-    Option["DaysSinceIssueCreated"] = "days-since-issue-created";
-    Option["DaysSinceLastCommentCreated"] = "days-since-last-comment-created";
+    Option["daysBeforeAssigneeReminder"] = "days-before-assignee-reminder";
+    Option["daysBeforeReplyReminder"] = "days-before-reply-reminder";
 })(Option = exports.Option || (exports.Option = {}));
 
 
@@ -2316,8 +2316,8 @@ function _getAndValidateArgs() {
         ignorePrUpdates: _toOptionalBoolean('ignore-pr-updates'),
         exemptDraftPr: core.getInput('exempt-draft-pr') === 'true',
         mlflow: true,
-        daysSinceIssueCreated: parseInt(core.getInput('days-since-issue-created')),
-        daysSinceLastCommentCreated: parseInt(core.getInput('days-since-last-comment-created'))
+        daysBeforeAssigneeReminder: parseInt(core.getInput('days-before-assignee-reminder')),
+        daysBeforeReplyReminder: parseInt(core.getInput('days-before-reply-reminder'))
     };
     for (const numberInput of [
         'days-before-stale',

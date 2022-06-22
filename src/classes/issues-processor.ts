@@ -356,7 +356,7 @@ export class IssuesProcessor {
             !isBotComment &&
             !IssuesProcessor._updatedSince(
               createdAt,
-              this.options.daysSinceLastCommentCreated
+              this.options.daysBeforeReplyReminder
             )
           ) {
             const lastCommentPostedByMaintainer = lastComment.user
@@ -408,7 +408,7 @@ export class IssuesProcessor {
             !hasMaintainerAssignee &&
             !IssuesProcessor._updatedSince(
               issue.created_at,
-              this.options.daysSinceIssueCreated
+              this.options.daysBeforeAssigneeReminder
             )
           ) {
             issueLogger.info('This issue has no assignees');

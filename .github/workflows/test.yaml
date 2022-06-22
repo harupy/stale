@@ -1,6 +1,23 @@
 name: 'Stale issues and PR'
 on:
   workflow_dispatch:
+    inputs:
+      daysBeforeStale:
+        description: 'days-before-stale'
+        required: false
+        default: 1
+      daysBeforeClose:
+        description: 'days-before-close'
+        required: false
+        default: 1
+      daysBeforeAssigneeReminder:
+        description: 'days-before-assignee-reminder'
+        required: false
+        default: 0
+      daysBeforeReplyReminder:
+        description: 'days-since-last-created'
+        required: false
+        default: 0
 
 jobs:
   stale:
@@ -16,5 +33,5 @@ jobs:
           days-before-pr-stale: -1
           days-before-pr-close: -1
           # Set to 0 for testing
-          days-since-issue-created: 0
-          days-since-last-comment-created: 0
+          days-before-assignee-reminder: 0
+          days-before-reply-reminder: 0

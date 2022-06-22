@@ -52,6 +52,6 @@ export interface IIssuesProcessorOptions {
   ignorePrUpdates: boolean | undefined;
   exemptDraftPr: boolean;
   mlflow: boolean;
-  daysSinceIssueCreated: number;
-  daysSinceLastCommentCreated: number;
+  daysBeforeAssigneeReminder: number;
+  daysBeforeReplyReminder: number;
 }
