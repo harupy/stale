@@ -316,6 +316,7 @@ export class IssuesProcessor {
     }
 
     if (this.options.mlflow) {
+      const reminderToMaintainers = 'Reminder to MLflow maintainers';
       if (issue.isPullRequest) {
         // TODO
       } else {
@@ -328,9 +329,7 @@ export class IssuesProcessor {
         }
         const comments = await this.listIssueComments(issue, issue.created_at);
         issueLogger.info(`This issue has ${comments.length} comments`);
-        const hasMaintainerAssignee = issue.assignees.some(user =>
-          this.isMaintainer(user.login)
-        );
+
         issueLogger.info(
           `Assignees on this issue: ${issue.assignees.map(({login}) => login)}`
         );
@@ -338,7 +337,7 @@ export class IssuesProcessor {
         if (comments.length > 0) {
           const lastComment = comments[comments.length - 1];
           issueLogger.info(
-            `Last comment was posted by ${lastComment.user?.login}`
+            `The last comment was posted by ${lastComment.user?.login}`
           );
           const isBotComment = lastComment.user?.type !== 'User';
           issueLogger.info(`Did a bot post this comment? ${isBotComment}`);
@@ -371,7 +370,7 @@ export class IssuesProcessor {
             } else {
               await this.createComment(
                 issue,
-                'Reminder to MLflow maintainers. Please reply to the comment.'
+                `${reminderToMaintainers}. Please make a reply.`
               );
               return;
             }
@@ -388,7 +387,7 @@ export class IssuesProcessor {
 
           if (
             isBotComment &&
-            lastComment.body?.includes('Reminder to Mlflow maintainers')
+            lastComment.body?.includes(reminderToMaintainers)
           ) {
             issueLogger.info('The last comment is a reminder to maintainers');
             return;
@@ -400,6 +399,9 @@ export class IssuesProcessor {
           issueLogger.info(
             `Days since this issue was created: ${daysSinceCreated.toFixed(2)}`
           );
+          const hasMaintainerAssignee = issue.assignees.some(user =>
+            this.isMaintainer(user.login)
+          );
           if (
             !hasMaintainerAssignee &&
             !IssuesProcessor._updatedSince(
@@ -410,7 +412,7 @@ export class IssuesProcessor {
             issueLogger.info('This issue has no assignees');
             await this.createComment(
               issue,
-              'Reminder to MLflow maintainers. Please assign a maintainer to this issue and start triaging.'
+              `${reminderToMaintainers}. Please assign a maintainer to this issue and start triaging.`
             );
             return;
           }
