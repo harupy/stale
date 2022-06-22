@@ -255,3 +255,43 @@ test('skip posting comments if a has-closing-pr label is applied', async () => {
 
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
+
+test('skip stale issues', async () => {
+  const opts = {
+    ...DefaultProcessorOptions,
+    removeStaleWhenUpdated: true,
+    mlflow: true
+  };
+  const TestIssueList: Issue[] = [
+    generateIssue(
+      opts,
+      1,
+      'An issue with a comment',
+      getDaysAgoTimestamp(15),
+      getDaysAgoTimestamp(15),
+      false,
+      ['stale'],
+      false,
+      false,
+      undefined,
+      [],
+      {login: 'non-maintainer', type: 'User'}
+    )
+  ];
+  const processor = new IssuesProcessorMock(
+    opts,
+    async p => (p === 1 ? TestIssueList : []),
+    async () => [],
+    async () => new Date().toDateString(),
+    undefined,
+    async () => ['maintainer']
+  );
+  processor.init();
+
+  const createCommentSpy = jest
+    .spyOn(processor as any, 'createComment')
+    .mockImplementation(() => {});
+  await processor.processIssues(1);
+
+  expect(createCommentSpy).not.toHaveBeenCalled();
+});
