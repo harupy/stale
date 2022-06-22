@@ -27,11 +27,11 @@ jobs:
         with:
           stale-issue-message: 'This issue is stale because it has been open 1 days with no activity. Remove stale label or comment or this will be closed in 1 days.'
           close-issue-message: 'This issue was closed because it has been stalled for 1 days with no activity.'
-          days-before-stale: 1
-          days-before-close: 1
+          days-before-stale: ${{ inputs.daysBeforeStale }}
+          days-before-close: ${{ inputs.daysBeforeClose }}
           start-date: '2022-06-16T00:00:00Z'
           days-before-pr-stale: -1
           days-before-pr-close: -1
           # Set to 0 for testing
-          days-before-assignee-reminder: 0
-          days-before-reply-reminder: 0
+          days-before-assignee-reminder: ${{ inputs.daysBeforeAssigneeReminder }}
+          days-before-reply-reminder: ${{ inputs.daysBeforeReplyReminder }}
