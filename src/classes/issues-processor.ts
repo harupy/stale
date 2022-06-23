@@ -110,10 +110,6 @@ export class IssuesProcessor {
     }
   }
 
-  async init() {
-    await this.setMaintainers();
-  }
-
   async getMaintainers(): Promise<string[]> {
     return (await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
       ({login}) => login

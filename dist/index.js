@@ -415,11 +415,6 @@ class IssuesProcessor {
     static _getCloseLabelUsedOptionName(issue) {
         return issue.isPullRequest ? option_1.Option.ClosePrLabel : option_1.Option.CloseIssueLabel;
     }
-    init() {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield this.setMaintainers();
-        });
-    }
     getMaintainers() {
         return __awaiter(this, void 0, void 0, function* () {
             return (yield this.client.rest.orgs.listMembers({ org: 'mlflow' })).data.map(({ login }) => login);
