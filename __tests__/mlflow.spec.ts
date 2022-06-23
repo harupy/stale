@@ -17,6 +17,10 @@ function getDaysAgoTimestamp(
 }
 const today = getDaysAgoTimestamp(0);
 
+function getIssues(issues: Issue[]): (page: number) => Promise<Issue[]> {
+  return async (page: number) => issues.slice((page - 1) * 100, page * 100);
+}
+
 type GenerateIssueParameters = {
   options: IIssuesProcessorOptions;
   id?: number;
@@ -77,7 +81,7 @@ test('Remind maintainers to assign a maintainer when an issue has no assignees a
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? issues : []),
+    getIssues(issues),
     async () => [],
     async () => new Date().toDateString(),
     undefined,
@@ -110,7 +114,7 @@ test('Remind maintainers to reply when the last comment was posted by a non-main
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? issues : []),
+    getIssues(issues),
     async () => [
       {
         user: {
@@ -157,7 +161,7 @@ test('Remind issue author to reply when the last comment was posted by a maintai
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? issues : []),
+    getIssues(issues),
     async () => [
       {
         user: {
@@ -197,7 +201,7 @@ test('Ignore comments posted by a bot', async () => {
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? issues : []),
+    getIssues(issues),
     async () => [
       {
         user: {
@@ -235,7 +239,7 @@ test('Ignore issues that have a has-closing-pr label', async () => {
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? issues : []),
+    getIssues(issues),
     async () => [],
     async () => new Date().toDateString()
   );
@@ -262,7 +266,7 @@ test('Ignore stale issues', async () => {
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? issues : []),
+    getIssues(issues),
     async () => [],
     async () => new Date().toDateString()
   );
@@ -289,7 +293,7 @@ test('Ignore issues created before start-date', async () => {
   ];
   const processor = new IssuesProcessorMock(
     options,
-    async p => (p === 1 ? issues : []),
+    getIssues(issues),
     async () => [],
     async () => new Date().toDateString()
   );
