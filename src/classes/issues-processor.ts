@@ -325,6 +325,7 @@ export class IssuesProcessor {
       const {startDate, daysBeforeReplyReminder, daysBeforeAssigneeReminder} =
         this.options;
       if (
+        issue.milestone ||
         issue.isStale ||
         (startDate &&
           !isDateMoreRecentThan(

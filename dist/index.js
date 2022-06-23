@@ -549,7 +549,8 @@ class IssuesProcessor {
             }
             if (this.options.mlflow) {
                 const { startDate, daysBeforeReplyReminder, daysBeforeAssigneeReminder } = this.options;
-                if (issue.isStale ||
+                if (issue.milestone ||
+                    issue.isStale ||
                     (startDate &&
                         !is_date_more_recent_than_1.isDateMoreRecentThan(new Date(issue.created_at), new Date(startDate)))) {
                     return;

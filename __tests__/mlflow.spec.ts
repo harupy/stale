@@ -304,3 +304,30 @@ test('Ignore issues created before start-date', async () => {
 
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
+
+test('Ignore issues in milestones', async () => {
+  const options = {
+    ...DefaultProcessorOptions,
+    mlflow: true
+  };
+  const issues: Issue[] = [
+    generateIssue({
+      options,
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15),
+      milestone: 'milestone'
+    })
+  ];
+  const processor = new IssuesProcessorMock(
+    options,
+    getIssues(issues),
+    async () => [],
+    async () => new Date().toDateString()
+  );
+  await processor.setMaintainers();
+
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
+  await processor.processIssues(1);
+
+  expect(createCommentSpy).not.toHaveBeenCalled();
+});
