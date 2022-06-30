@@ -536,16 +536,30 @@ class IssuesProcessor {
                 issueLogger.info(`The option ${issueLogger.createOptionLink(option_1.Option.OnlyLabels)} was not specified`);
                 issueLogger.info(logger_service_1.LoggerService.white('└──'), `Continuing the process for this $$type`);
             }
-            if (this.options.mlflow) {
+            issueLogger.info(`Days before $$type stale: ${logger_service_1.LoggerService.cyan(daysBeforeStale)}`);
+            const shouldMarkAsStale = should_mark_when_stale_1.shouldMarkWhenStale(daysBeforeStale);
+            // Try to remove the close label when not close/locked issue or PR
+            yield this._removeCloseLabel(issue, closeLabel);
+            if (this.options.startDate) {
+                const startDate = new Date(this.options.startDate);
+                const createdAt = new Date(issue.created_at);
+                issueLogger.info(`A start date was specified for the ${get_humanized_date_1.getHumanizedDate(startDate)} (${logger_service_1.LoggerService.cyan(this.options.startDate)})`);
+                // Expecting that GitHub will always set a creation date on the issues and PRs
+                // But you never know!
+                if (!is_valid_date_1.isValidDate(createdAt)) {
+                    IssuesProcessor._endIssueProcessing(issue);
+                    core.setFailed(new Error(`Invalid issue field: "created_at". Expected a valid date`));
+                }
+                issueLogger.info(`$$type created the ${get_humanized_date_1.getHumanizedDate(createdAt)} (${logger_service_1.LoggerService.cyan(issue.created_at)})`);
+                if (!is_date_more_recent_than_1.isDateMoreRecentThan(createdAt, startDate)) {
+                    issueLogger.info(`Skipping this $$type because it was created before the specified start date`);
+                    IssuesProcessor._endIssueProcessing(issue);
+                    return; // Don't process issues which were created before the start date
+                }
+            }
+            if (this.options.mlflow && !issue.isStale && !issue.milestone) {
                 const createMentions = (logins) => logins.map(login => `@${login}`).join(' ');
                 const isMaintainer = (login) => this.maintainers.includes(login);
-                const { startDate, daysBeforeReplyReminder, daysBeforeAssigneeReminder } = this.options;
-                if (issue.milestone ||
-                    issue.isStale ||
-                    (startDate &&
-                        !is_date_more_recent_than_1.isDateMoreRecentThan(new Date(issue.created_at), new Date(startDate)))) {
-                    return;
-                }
                 const MARKERS = {
                     assignMaintainer: '<!-- assign-maintainer -->',
                     reminderToMaintainers: '<!-- reminder-to-maintainers -->',
@@ -564,7 +578,7 @@ class IssuesProcessor {
                         ? issueComments[issueComments.length - 1]
                         : undefined;
                     if (!hasMaintainerAssignee &&
-                        !IssuesProcessor._updatedSince(issue.created_at, daysBeforeAssigneeReminder)) {
+                        !IssuesProcessor._updatedSince(issue.created_at, this.options.daysBeforeAssigneeReminder)) {
                         issueLogger.info('This issue has no assignees');
                         if (!(lastComment &&
                             ((_b = lastComment.body) === null || _b === void 0 ? void 0 : _b.includes(MARKERS.assignMaintainer)))) {
@@ -593,7 +607,7 @@ class IssuesProcessor {
                     const daysSinceLastCommentCreated = IssuesProcessor.getDaysSince(lastCommentCreatedAt).toFixed(2);
                     issueLogger.info(`Days since the last comment was created: ${daysSinceLastCommentCreated}`);
                     if (!botPostedLastComment &&
-                        !IssuesProcessor._updatedSince(lastCommentCreatedAt, daysBeforeReplyReminder)) {
+                        !IssuesProcessor._updatedSince(lastCommentCreatedAt, this.options.daysBeforeReplyReminder)) {
                         const maintainerPostedLastComment = lastComment.user
                             ? isMaintainer(lastComment.user.login)
                             : false;
@@ -622,27 +636,6 @@ class IssuesProcessor {
                         issueLogger.info('The last comment is a reminder to maintainers posted by a bot.');
                         return;
                     }
-                }
-            }
-            issueLogger.info(`Days before $$type stale: ${logger_service_1.LoggerService.cyan(daysBeforeStale)}`);
-            const shouldMarkAsStale = should_mark_when_stale_1.shouldMarkWhenStale(daysBeforeStale);
-            // Try to remove the close label when not close/locked issue or PR
-            yield this._removeCloseLabel(issue, closeLabel);
-            if (this.options.startDate) {
-                const startDate = new Date(this.options.startDate);
-                const createdAt = new Date(issue.created_at);
-                issueLogger.info(`A start date was specified for the ${get_humanized_date_1.getHumanizedDate(startDate)} (${logger_service_1.LoggerService.cyan(this.options.startDate)})`);
-                // Expecting that GitHub will always set a creation date on the issues and PRs
-                // But you never know!
-                if (!is_valid_date_1.isValidDate(createdAt)) {
-                    IssuesProcessor._endIssueProcessing(issue);
-                    core.setFailed(new Error(`Invalid issue field: "created_at". Expected a valid date`));
-                }
-                issueLogger.info(`$$type created the ${get_humanized_date_1.getHumanizedDate(createdAt)} (${logger_service_1.LoggerService.cyan(issue.created_at)})`);
-                if (!is_date_more_recent_than_1.isDateMoreRecentThan(createdAt, startDate)) {
-                    issueLogger.info(`Skipping this $$type because it was created before the specified start date`);
-                    IssuesProcessor._endIssueProcessing(issue);
-                    return; // Don't process issues which were created before the start date
                 }
             }
             if (issue.isStale) {

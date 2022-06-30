@@ -309,26 +309,56 @@ export class IssuesProcessor {
       );
     }
 
-    if (this.options.mlflow) {
+    issueLogger.info(
+      `Days before $$type stale: ${LoggerService.cyan(daysBeforeStale)}`
+    );
+
+    const shouldMarkAsStale: boolean = shouldMarkWhenStale(daysBeforeStale);
+
+    // Try to remove the close label when not close/locked issue or PR
+    await this._removeCloseLabel(issue, closeLabel);
+
+    if (this.options.startDate) {
+      const startDate: Date = new Date(this.options.startDate);
+      const createdAt: Date = new Date(issue.created_at);
+
+      issueLogger.info(
+        `A start date was specified for the ${getHumanizedDate(
+          startDate
+        )} (${LoggerService.cyan(this.options.startDate)})`
+      );
+
+      // Expecting that GitHub will always set a creation date on the issues and PRs
+      // But you never know!
+      if (!isValidDate(createdAt)) {
+        IssuesProcessor._endIssueProcessing(issue);
+        core.setFailed(
+          new Error(`Invalid issue field: "created_at". Expected a valid date`)
+        );
+      }
+
+      issueLogger.info(
+        `$$type created the ${getHumanizedDate(
+          createdAt
+        )} (${LoggerService.cyan(issue.created_at)})`
+      );
+
+      if (!isDateMoreRecentThan(createdAt, startDate)) {
+        issueLogger.info(
+          `Skipping this $$type because it was created before the specified start date`
+        );
+
+        IssuesProcessor._endIssueProcessing(issue);
+        return; // Don't process issues which were created before the start date
+      }
+    }
+
+    if (this.options.mlflow && !issue.isStale && !issue.milestone) {
       const createMentions = (logins: string[]): string =>
         logins.map(login => `@${login}`).join(' ');
 
       const isMaintainer = (login: string): boolean =>
         this.maintainers.includes(login);
-
-      const {startDate, daysBeforeReplyReminder, daysBeforeAssigneeReminder} =
-        this.options;
-      if (
-        issue.milestone ||
-        issue.isStale ||
-        (startDate &&
-          !isDateMoreRecentThan(
-            new Date(issue.created_at),
-            new Date(startDate)
-          ))
-      ) {
-        return;
-      }
 
       const MARKERS = {
         assignMaintainer: '<!-- assign-maintainer -->',
@@ -364,7 +394,7 @@ export class IssuesProcessor {
           !hasMaintainerAssignee &&
           !IssuesProcessor._updatedSince(
             issue.created_at,
-            daysBeforeAssigneeReminder
+            this.options.daysBeforeAssigneeReminder
           )
         ) {
           issueLogger.info('This issue has no assignees');
@@ -417,7 +447,7 @@ export class IssuesProcessor {
           !botPostedLastComment &&
           !IssuesProcessor._updatedSince(
             lastCommentCreatedAt,
-            daysBeforeReplyReminder
+            this.options.daysBeforeReplyReminder
           )
         ) {
           const maintainerPostedLastComment = lastComment.user
@@ -465,50 +495,6 @@ export class IssuesProcessor {
           );
           return;
         }
-      }
-    }
-
-    issueLogger.info(
-      `Days before $$type stale: ${LoggerService.cyan(daysBeforeStale)}`
-    );
-
-    const shouldMarkAsStale: boolean = shouldMarkWhenStale(daysBeforeStale);
-
-    // Try to remove the close label when not close/locked issue or PR
-    await this._removeCloseLabel(issue, closeLabel);
-
-    if (this.options.startDate) {
-      const startDate: Date = new Date(this.options.startDate);
-      const createdAt: Date = new Date(issue.created_at);
-
-      issueLogger.info(
-        `A start date was specified for the ${getHumanizedDate(
-          startDate
-        )} (${LoggerService.cyan(this.options.startDate)})`
-      );
-
-      // Expecting that GitHub will always set a creation date on the issues and PRs
-      // But you never know!
-      if (!isValidDate(createdAt)) {
-        IssuesProcessor._endIssueProcessing(issue);
-        core.setFailed(
-          new Error(`Invalid issue field: "created_at". Expected a valid date`)
-        );
-      }
-
-      issueLogger.info(
-        `$$type created the ${getHumanizedDate(
-          createdAt
-        )} (${LoggerService.cyan(issue.created_at)})`
-      );
-
-      if (!isDateMoreRecentThan(createdAt, startDate)) {
-        issueLogger.info(
-          `Skipping this $$type because it was created before the specified start date`
-        );
-
-        IssuesProcessor._endIssueProcessing(issue);
-        return; // Don't process issues which were created before the start date
       }
     }
 
