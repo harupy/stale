@@ -3,6 +3,9 @@ import {IUser} from '../src/interfaces/user';
 import {IIssuesProcessorOptions} from '../src/interfaces/issues-processor-options';
 import {IsoDateString} from '../src/types/iso-date-string';
 import {IssuesProcessorMock} from './classes/issues-processor-mock';
+import {IPullRequest} from '../src/interfaces/pull-request';
+import {IComment} from '../src/interfaces/comment';
+
 import {DefaultProcessorOptions} from './constants/default-processor-options';
 import {generateIssue as _generateIssue} from './functions/generate-issue';
 
@@ -36,7 +39,7 @@ type GenerateIssueParameters = {
   user?: IUser;
 };
 
-function generateIssue({
+const generateIssue = ({
   options,
   id = 1,
   title = 'Issue',
@@ -49,7 +52,7 @@ function generateIssue({
   milestone = undefined,
   assignees = [],
   user = undefined
-}: GenerateIssueParameters): Issue {
+}: GenerateIssueParameters): Issue => {
   return _generateIssue(
     options,
     id,
@@ -64,11 +67,37 @@ function generateIssue({
     assignees,
     user
   );
-}
+};
 
 const MAINTAINER = 'maintainer';
 const NON_MAINTAINER = 'non-maintainer';
-const getMaintainers = async () => [MAINTAINER];
+
+const createIssueProcessorMock = ({
+  options = DefaultProcessorOptions,
+  getIssues = async () => [],
+  listIssueComments = async () => [],
+  getLabelCreationDate = async () => new Date().toDateString(),
+  getPullRequest = undefined,
+  getMaintainers = async () => [MAINTAINER]
+}: {
+  options?: IIssuesProcessorOptions;
+  getIssues?: (page: number) => Promise<Issue[]>;
+  listIssueComments?: (issue: Issue, sinceDate: string) => Promise<IComment[]>;
+  getLabelCreationDate?: (
+    issue: Issue,
+    label: string
+  ) => Promise<string | undefined>;
+  getPullRequest?: (issue: Issue) => Promise<IPullRequest | undefined | void>;
+  getMaintainers?: () => Promise<string[]>;
+}): IssuesProcessorMock =>
+  new IssuesProcessorMock(
+    options,
+    getIssues,
+    listIssueComments,
+    getLabelCreationDate,
+    getPullRequest,
+    getMaintainers
+  );
 
 test('Remind maintainers to assign a maintainer when an issue has no maintainer assignees', async () => {
   const options = {
@@ -83,14 +112,10 @@ test('Remind maintainers to assign a maintainer when an issue has no maintainer 
       assignees: [NON_MAINTAINER]
     })
   ];
-  const processor = new IssuesProcessorMock(
+  const processor = createIssueProcessorMock({
     options,
-    createGetIssues(issues),
-    async () => [],
-    async () => new Date().toDateString(),
-    undefined,
-    getMaintainers
-  );
+    getIssues: createGetIssues(issues)
+  });
   await processor.setMaintainers();
   const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
@@ -117,10 +142,10 @@ test('Remind maintainers to reply when last comment was posted by non-maintainer
       assignees: [MAINTAINER]
     })
   ];
-  const processor = new IssuesProcessorMock(
+  const processor = createIssueProcessorMock({
     options,
-    createGetIssues(issues),
-    async () => [
+    getIssues: createGetIssues(issues),
+    listIssueComments: async () => [
       {
         user: {
           login: 'non-maintainer',
@@ -129,13 +154,9 @@ test('Remind maintainers to reply when last comment was posted by non-maintainer
         body: 'comment',
         created_at: getDaysAgoTimestamp(15)
       }
-    ],
-    async () => new Date().toDateString(),
-    undefined,
-    getMaintainers
-  );
+    ]
+  });
   await processor.setMaintainers();
-
   const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
@@ -163,10 +184,10 @@ test('Remind issue author to reply when last comment was posted by maintainer', 
       }
     })
   ];
-  const processor = new IssuesProcessorMock(
+  const processor = createIssueProcessorMock({
     options,
-    createGetIssues(issues),
-    async () => [
+    getIssues: createGetIssues(issues),
+    listIssueComments: async () => [
       {
         user: {
           login: MAINTAINER,
@@ -175,11 +196,8 @@ test('Remind issue author to reply when last comment was posted by maintainer', 
         body: 'comment',
         created_at: getDaysAgoTimestamp(15)
       }
-    ],
-    async () => new Date().toDateString(),
-    undefined,
-    getMaintainers
-  );
+    ]
+  });
   await processor.setMaintainers();
   const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
@@ -204,10 +222,10 @@ test('Skip processing issue if last comment was posted by bot', async () => {
       assignees: [MAINTAINER]
     })
   ];
-  const processor = new IssuesProcessorMock(
+  const processor = createIssueProcessorMock({
     options,
-    createGetIssues(issues),
-    async () => [
+    getIssues: createGetIssues(issues),
+    listIssueComments: async () => [
       {
         user: {
           login: 'bot',
@@ -216,13 +234,9 @@ test('Skip processing issue if last comment was posted by bot', async () => {
         body: 'comment',
         created_at: getDaysAgoTimestamp(15)
       }
-    ],
-    async () => new Date().toDateString(),
-    undefined,
-    getMaintainers
-  );
+    ]
+  });
   await processor.setMaintainers();
-
   const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
@@ -243,10 +257,11 @@ test('Ignore issue that is triaged and has has-closing-pr label', async () => {
       assignees: ['maintainer']
     })
   ];
-  const processor = new IssuesProcessorMock(
+
+  const processor = createIssueProcessorMock({
     options,
-    createGetIssues(issues),
-    async () => [
+    getIssues: createGetIssues(issues),
+    listIssueComments: async () => [
       {
         user: {
           login: MAINTAINER,
@@ -255,13 +270,9 @@ test('Ignore issue that is triaged and has has-closing-pr label', async () => {
         body: 'Thanks for filing the PR!',
         created_at: getDaysAgoTimestamp(15)
       }
-    ],
-    async () => new Date().toDateString(),
-    undefined,
-    getMaintainers
-  );
+    ]
+  });
   await processor.setMaintainers();
-
   const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
@@ -281,14 +292,12 @@ test('Ignore stale issue', async () => {
       labels: ['Stale']
     })
   ];
-  const processor = new IssuesProcessorMock(
-    options,
-    createGetIssues(issues),
-    async () => [],
-    async () => new Date().toDateString()
-  );
-  await processor.setMaintainers();
 
+  const processor = createIssueProcessorMock({
+    options,
+    getIssues: createGetIssues(issues)
+  });
+  await processor.setMaintainers();
   const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 
@@ -308,12 +317,10 @@ test('Ignore issue created before start-date', async () => {
       createdAt: getDaysAgoTimestamp(15)
     })
   ];
-  const processor = new IssuesProcessorMock(
+  const processor = createIssueProcessorMock({
     options,
-    createGetIssues(issues),
-    async () => [],
-    async () => new Date().toDateString()
-  );
+    getIssues: createGetIssues(issues)
+  });
   await processor.setMaintainers();
 
   const createCommentSpy = jest.spyOn(processor, 'createComment');
@@ -335,14 +342,11 @@ test('Ignore milestone', async () => {
       milestone: 'milestone'
     })
   ];
-  const processor = new IssuesProcessorMock(
+  const processor = createIssueProcessorMock({
     options,
-    createGetIssues(issues),
-    async () => [],
-    async () => new Date().toDateString()
-  );
+    getIssues: createGetIssues(issues)
+  });
   await processor.setMaintainers();
-
   const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
 

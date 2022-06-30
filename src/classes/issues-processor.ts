@@ -25,7 +25,6 @@ import {StaleOperations} from './stale-operations';
 import {Statistics} from './statistics';
 import {LoggerService} from '../services/logger.service';
 import {OctokitIssue} from '../interfaces/issue';
-import {last} from 'lodash';
 
 /***
  * Handle processing of issues for staleness/closure.
