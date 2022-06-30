@@ -397,11 +397,11 @@ class IssuesProcessor {
         const millisSinceLastUpdated = new Date().getTime() - new Date(timestamp).getTime();
         return millisSinceLastUpdated <= daysInMillis;
     }
-    static _getDaysSince(timestamp) {
+    static getDaysSince(timestamp) {
         const diffTime = Math.abs(new Date().getTime() - new Date(timestamp).getTime());
         return diffTime / (1000 * 60 * 60 * 24);
     }
-    static _getNow() {
+    static getNow() {
         const withoutMilliseconds = new Date().toISOString().split('.')[0];
         return `${withoutMilliseconds}Z`;
     }
@@ -425,9 +425,6 @@ class IssuesProcessor {
             this.maintainers.push(...(yield this.getMaintainers()));
         });
     }
-    isMaintainer(login) {
-        return this.maintainers.includes(login);
-    }
     createComment(issue, body) {
         return __awaiter(this, void 0, void 0, function* () {
             const issueLogger = new issue_logger_1.IssueLogger(issue);
@@ -447,9 +444,6 @@ class IssuesProcessor {
                 }
             }
         });
-    }
-    isPostedByMaintainer(login) {
-        return this.isMaintainer(login);
     }
     processIssues(page = 1) {
         var _a, _b;
@@ -543,6 +537,8 @@ class IssuesProcessor {
                 issueLogger.info(logger_service_1.LoggerService.white('└──'), `Continuing the process for this $$type`);
             }
             if (this.options.mlflow) {
+                const createMentions = (logins) => logins.map(login => `@${login}`).join(' ');
+                const isMaintainer = (login) => this.maintainers.includes(login);
                 const { startDate, daysBeforeReplyReminder, daysBeforeAssigneeReminder } = this.options;
                 if (issue.milestone ||
                     issue.isStale ||
@@ -550,65 +546,80 @@ class IssuesProcessor {
                         !is_date_more_recent_than_1.isDateMoreRecentThan(new Date(issue.created_at), new Date(startDate)))) {
                     return;
                 }
-                const reminderToMaintainers = 'Reminder to MLflow maintainers';
+                const MARKERS = {
+                    assignMaintainer: '<!-- assign-maintainer -->',
+                    reminderToMaintainers: '<!-- reminder-to-maintainers -->'
+                };
                 if (issue.isPullRequest) {
                     // TODO
                 }
                 else {
-                    const hasClosingPr = issue.labels.some(({ name }) => name === 'has-closing-pr');
-                    if (hasClosingPr) {
-                        issueLogger.info('This issue has a closing PR');
+                    const daysSinceIssueCreated = IssuesProcessor.getDaysSince(issue.created_at).toFixed(2);
+                    issueLogger.info(`Days since this issue was created: ${daysSinceIssueCreated}`);
+                    issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
+                    const hasMaintainerAssignee = issue.assignees.some(user => isMaintainer(user.login));
+                    const issueComments = yield this.listIssueComments(issue, issue.created_at);
+                    const lastComment = issueComments.length > 0
+                        ? issueComments[issueComments.length - 1]
+                        : undefined;
+                    if (!hasMaintainerAssignee &&
+                        !IssuesProcessor._updatedSince(issue.created_at, daysBeforeAssigneeReminder)) {
+                        issueLogger.info('This issue has no assignees');
+                        if (!(lastComment &&
+                            ((_b = lastComment.body) === null || _b === void 0 ? void 0 : _b.includes(MARKERS.assignMaintainer)))) {
+                            const maintainersToMention = [
+                                'BenWilson2',
+                                'dbczumar',
+                                'harupy',
+                                'WeichenXu123'
+                            ];
+                            const mentions = createMentions(maintainersToMention);
+                            yield this.createComment(issue, `${MARKERS.assignMaintainer}\n${mentions} Please assign a maintainer and start triaging this issue.`);
+                        }
                         return;
                     }
-                    const comments = yield this.listIssueComments(issue, issue.created_at);
-                    issueLogger.info(`The number of comments in this issue: ${comments.length}`);
-                    issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
-                    if (comments.length > 0) {
-                        const lastComment = comments[comments.length - 1];
-                        issueLogger.info(`The last comment was posted by ${(_b = lastComment.user) === null || _b === void 0 ? void 0 : _b.login}`);
-                        const isBotComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
-                        issueLogger.info(`Did a bot post the last comment? ${isBotComment}`);
-                        const lastCommentCreatedAt = lastComment.created_at || IssuesProcessor._getNow();
-                        const daysSinceCreated = IssuesProcessor._getDaysSince(lastCommentCreatedAt);
-                        issueLogger.info(`Days since the last comment was posted: ${daysSinceCreated.toFixed(2)}`);
-                        if (!isBotComment &&
-                            !IssuesProcessor._updatedSince(lastCommentCreatedAt, daysBeforeReplyReminder)) {
-                            const lastCommentPostedByMaintainer = lastComment.user
-                                ? this.isPostedByMaintainer(lastComment.user.login)
-                                : false;
-                            issueLogger.info(`Did a maintainer post the last comment? ${lastCommentPostedByMaintainer}`);
-                            if (lastCommentPostedByMaintainer) {
-                                const mention = issue.user ? `@${issue.user.login}` : '';
-                                yield this.createComment(issue, `${mention} Any updates here?`);
-                                return;
-                            }
-                            else {
-                                yield this.createComment(issue, `${reminderToMaintainers}. Please reply to comments.`);
-                                return;
-                            }
-                        }
-                        // We should not stale an issue if it has no comments from maintainers
-                        const hasMaintainerComment = comments.some(({ user }) => user ? this.isMaintainer(user.login) : false);
-                        if (!hasMaintainerComment) {
-                            issueLogger.info('This issue has no comments from maintainers');
+                    if (!lastComment) {
+                        return;
+                    }
+                    const hasClosingPr = issue.labels.some(({ name }) => name === 'has-closing-pr');
+                    if (hasClosingPr) {
+                        issueLogger.info('This issue has a closing PR.');
+                        return;
+                    }
+                    const botPostedLastComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
+                    issueLogger.info(`Did a bot post the last comment? ${botPostedLastComment}`);
+                    const lastCommentCreatedAt = lastComment.created_at || IssuesProcessor.getNow();
+                    const daysSinceLastCommentCreated = IssuesProcessor.getDaysSince(lastCommentCreatedAt).toFixed(2);
+                    issueLogger.info(`Days since the last comment was created: ${daysSinceLastCommentCreated}`);
+                    if (!botPostedLastComment &&
+                        !IssuesProcessor._updatedSince(lastCommentCreatedAt, daysBeforeReplyReminder)) {
+                        const maintainerPostedLastComment = lastComment.user
+                            ? isMaintainer(lastComment.user.login)
+                            : false;
+                        issueLogger.info(`Did a maintainer post the last comment? ${maintainerPostedLastComment}`);
+                        if (maintainerPostedLastComment) {
+                            const mention = issue.user ? `@${issue.user.login}` : '';
+                            yield this.createComment(issue, `${mention} Any updates here? If you're working on a PR, please link it to this issue.`);
                             return;
                         }
-                        if (isBotComment &&
-                            ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes(reminderToMaintainers))) {
-                            issueLogger.info('The last comment is a reminder to maintainers posted by a bot');
+                        else {
+                            const mentions = createMentions(issue.assignees
+                                .filter(({ login }) => isMaintainer(login))
+                                .map(({ login }) => login));
+                            yield this.createComment(issue, `${MARKERS.reminderToMaintainers}\n${mentions} Please reply to comments.`);
                             return;
                         }
                     }
-                    else {
-                        const daysSinceCreated = IssuesProcessor._getDaysSince(issue.created_at);
-                        issueLogger.info(`Days since this issue was created: ${daysSinceCreated.toFixed(2)}`);
-                        const hasMaintainerAssignee = issue.assignees.some(user => this.isMaintainer(user.login));
-                        if (!hasMaintainerAssignee &&
-                            !IssuesProcessor._updatedSince(issue.created_at, daysBeforeAssigneeReminder)) {
-                            issueLogger.info('This issue has no assignees');
-                            yield this.createComment(issue, `${reminderToMaintainers}. Please assign a maintainer to this issue and start triaging.`);
-                            return;
-                        }
+                    // We should not stale an issue that has no comments from maintainers
+                    const hasMaintainerComment = issueComments.some(({ user }) => user ? isMaintainer(user.login) : false);
+                    if (!hasMaintainerComment) {
+                        issueLogger.info('This issue has no comments from maintainers.');
+                        return;
+                    }
+                    if (botPostedLastComment &&
+                        ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes(MARKERS.reminderToMaintainers))) {
+                        issueLogger.info('The last comment is a reminder to maintainers posted by a bot.');
+                        return;
                     }
                 }
             }
