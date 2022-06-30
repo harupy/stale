@@ -1,5 +1,4 @@
 import {DefaultProcessorOptions} from './constants/default-processor-options';
-
 import {
   TODAY,
   MAINTAINER,
@@ -8,7 +7,7 @@ import {
   createGetIssues,
   getDaysAgoTimestamp,
   createIssueProcessorMock
-} from './mlflow-utils';
+} from './mlflow-test-utils';
 
 test('Remind maintainers to assign a maintainer when an issue has no maintainer assignees', async () => {
   const options = {
