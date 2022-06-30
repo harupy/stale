@@ -72,16 +72,9 @@ const generateIssue = ({
 const MAINTAINER = 'maintainer';
 const NON_MAINTAINER = 'non-maintainer';
 
-const createIssueProcessorMock = ({
-  options = DefaultProcessorOptions,
-  getIssues = async () => [],
-  listIssueComments = async () => [],
-  getLabelCreationDate = async () => new Date().toDateString(),
-  getPullRequest = undefined,
-  getMaintainers = async () => [MAINTAINER]
-}: {
-  options?: IIssuesProcessorOptions;
-  getIssues?: (page: number) => Promise<Issue[]>;
+type CreateIssueProcessorMockParameters = {
+  options: IIssuesProcessorOptions;
+  getIssues: (page: number) => Promise<Issue[]>;
   listIssueComments?: (issue: Issue, sinceDate: string) => Promise<IComment[]>;
   getLabelCreationDate?: (
     issue: Issue,
@@ -89,7 +82,16 @@ const createIssueProcessorMock = ({
   ) => Promise<string | undefined>;
   getPullRequest?: (issue: Issue) => Promise<IPullRequest | undefined | void>;
   getMaintainers?: () => Promise<string[]>;
-}): IssuesProcessorMock =>
+};
+
+const createIssueProcessorMock = ({
+  options,
+  getIssues,
+  listIssueComments = async () => [],
+  getLabelCreationDate = async () => new Date().toDateString(),
+  getPullRequest = undefined,
+  getMaintainers = async () => [MAINTAINER]
+}: CreateIssueProcessorMockParameters): IssuesProcessorMock =>
   new IssuesProcessorMock(
     options,
     getIssues,
