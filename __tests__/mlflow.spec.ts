@@ -18,7 +18,7 @@ function getDaysAgoTimestamp(
   const withoutMilliseconds = daysAgo.toISOString().split('.')[0];
   return `${withoutMilliseconds}Z`;
 }
-const today = getDaysAgoTimestamp(0);
+const TODAY = getDaysAgoTimestamp(0);
 
 function createGetIssues(issues: Issue[]): (page: number) => Promise<Issue[]> {
   return async (page: number) => issues.slice((page - 1) * 100, page * 100);
@@ -43,8 +43,8 @@ const generateIssue = ({
   options,
   id = 1,
   title = 'Issue',
-  updatedAt = today,
-  createdAt = today,
+  updatedAt = TODAY,
+  createdAt = TODAY,
   isPullRequest = false,
   labels = [],
   isClosed = false,
@@ -310,7 +310,7 @@ test('Ignore issue created before start-date', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true,
-    startDate: today
+    startDate: TODAY
   };
   const issues: Issue[] = [
     generateIssue({
