@@ -560,7 +560,7 @@ class IssuesProcessor {
             if (this.options.mlflow && !issue.isStale && !issue.milestone) {
                 const createMentions = (logins) => logins.map(login => `@${login}`).join(' ');
                 const isMaintainer = (login) => this.maintainers.includes(login);
-                const MARKERS = {
+                const TAGS = {
                     assignMaintainer: '<!-- assign-maintainer -->',
                     reminderToMaintainers: '<!-- reminder-to-maintainers -->',
                     reminderToIssueAuthor: '<!-- reminder-to-issue-author -->'
@@ -580,8 +580,7 @@ class IssuesProcessor {
                     if (!hasMaintainerAssignee &&
                         !IssuesProcessor._updatedSince(issue.created_at, this.options.daysBeforeAssigneeReminder)) {
                         issueLogger.info('This issue has no assignees');
-                        if (!(lastComment &&
-                            ((_b = lastComment.body) === null || _b === void 0 ? void 0 : _b.includes(MARKERS.assignMaintainer)))) {
+                        if (!(lastComment && ((_b = lastComment.body) === null || _b === void 0 ? void 0 : _b.includes(TAGS.assignMaintainer)))) {
                             const maintainersToMention = [
                                 'BenWilson2',
                                 'dbczumar',
@@ -589,7 +588,7 @@ class IssuesProcessor {
                                 'WeichenXu123'
                             ];
                             const mentions = createMentions(maintainersToMention);
-                            yield this.createComment(issue, `${MARKERS.assignMaintainer}\n${mentions} Please assign a maintainer and start triaging this issue.`);
+                            yield this.createComment(issue, `${TAGS.assignMaintainer}\n${mentions} Please assign a maintainer and start triaging this issue.`);
                         }
                         return;
                     }
@@ -614,14 +613,14 @@ class IssuesProcessor {
                         issueLogger.info(`Did a maintainer post the last comment? ${maintainerPostedLastComment}`);
                         if (maintainerPostedLastComment) {
                             const mention = issue.user ? `@${issue.user.login}` : '';
-                            yield this.createComment(issue, `${MARKERS.reminderToIssueAuthor}\n${mention} Any updates here? If you're working on a PR, please link it to this issue.`);
+                            yield this.createComment(issue, `${TAGS.reminderToIssueAuthor}\n${mention} Any updates here? If you're working on a PR, please link it to this issue.`);
                             return;
                         }
                         else {
                             const mentions = createMentions(issue.assignees
                                 .filter(({ login }) => isMaintainer(login))
                                 .map(({ login }) => login));
-                            yield this.createComment(issue, `${MARKERS.reminderToMaintainers}\n${mentions} Please reply to comments.`);
+                            yield this.createComment(issue, `${TAGS.reminderToMaintainers}\n${mentions} Please reply to comments.`);
                             return;
                         }
                     }
@@ -632,7 +631,7 @@ class IssuesProcessor {
                         return;
                     }
                     if (botPostedLastComment &&
-                        ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes(MARKERS.reminderToMaintainers))) {
+                        ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes(TAGS.reminderToMaintainers))) {
                         issueLogger.info('The last comment is a reminder to maintainers posted by a bot.');
                         return;
                     }

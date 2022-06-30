@@ -360,7 +360,7 @@ export class IssuesProcessor {
       const isMaintainer = (login: string): boolean =>
         this.maintainers.includes(login);
 
-      const MARKERS = {
+      const TAGS = {
         assignMaintainer: '<!-- assign-maintainer -->',
         reminderToMaintainers: '<!-- reminder-to-maintainers -->',
         reminderToIssueAuthor: '<!-- reminder-to-issue-author -->'
@@ -399,10 +399,7 @@ export class IssuesProcessor {
         ) {
           issueLogger.info('This issue has no assignees');
           if (
-            !(
-              lastComment &&
-              lastComment.body?.includes(MARKERS.assignMaintainer)
-            )
+            !(lastComment && lastComment.body?.includes(TAGS.assignMaintainer))
           ) {
             const maintainersToMention = [
               'BenWilson2',
@@ -413,7 +410,7 @@ export class IssuesProcessor {
             const mentions = createMentions(maintainersToMention);
             await this.createComment(
               issue,
-              `${MARKERS.assignMaintainer}\n${mentions} Please assign a maintainer and start triaging this issue.`
+              `${TAGS.assignMaintainer}\n${mentions} Please assign a maintainer and start triaging this issue.`
             );
           }
           return;
@@ -460,7 +457,7 @@ export class IssuesProcessor {
             const mention = issue.user ? `@${issue.user.login}` : '';
             await this.createComment(
               issue,
-              `${MARKERS.reminderToIssueAuthor}\n${mention} Any updates here? If you're working on a PR, please link it to this issue.`
+              `${TAGS.reminderToIssueAuthor}\n${mention} Any updates here? If you're working on a PR, please link it to this issue.`
             );
             return;
           } else {
@@ -471,7 +468,7 @@ export class IssuesProcessor {
             );
             await this.createComment(
               issue,
-              `${MARKERS.reminderToMaintainers}\n${mentions} Please reply to comments.`
+              `${TAGS.reminderToMaintainers}\n${mentions} Please reply to comments.`
             );
             return;
           }
@@ -488,7 +485,7 @@ export class IssuesProcessor {
 
         if (
           botPostedLastComment &&
-          lastComment.body?.includes(MARKERS.reminderToMaintainers)
+          lastComment.body?.includes(TAGS.reminderToMaintainers)
         ) {
           issueLogger.info(
             'The last comment is a reminder to maintainers posted by a bot.'
