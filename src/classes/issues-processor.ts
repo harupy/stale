@@ -332,7 +332,8 @@ export class IssuesProcessor {
 
       const MARKERS = {
         assignMaintainer: '<!-- assign-maintainer -->',
-        reminderToMaintainers: '<!-- reminder-to-maintainers -->'
+        reminderToMaintainers: '<!-- reminder-to-maintainers -->',
+        reminderToIssueAuthor: '<!-- reminder-to-issue-author -->'
       };
 
       if (issue.isPullRequest) {
@@ -429,7 +430,7 @@ export class IssuesProcessor {
             const mention = issue.user ? `@${issue.user.login}` : '';
             await this.createComment(
               issue,
-              `${mention} Any updates here? If you're working on a PR, please link it to this issue.`
+              `${MARKERS.reminderToIssueAuthor}\n${mention} Any updates here? If you're working on a PR, please link it to this issue.`
             );
             return;
           } else {
