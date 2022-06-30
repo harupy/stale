@@ -17,7 +17,7 @@ function getDaysAgoTimestamp(
 }
 const today = getDaysAgoTimestamp(0);
 
-function getIssues(issues: Issue[]): (page: number) => Promise<Issue[]> {
+function createGetIssues(issues: Issue[]): (page: number) => Promise<Issue[]> {
   return async (page: number) => issues.slice((page - 1) * 100, page * 100);
 }
 
@@ -66,7 +66,11 @@ function generateIssue({
   );
 }
 
-test('Remind maintainers to assign a maintainer when an issue has no assignees and comments', async () => {
+const MAINTAINER = 'maintainer';
+const NON_MAINTAINER = 'non-maintainer';
+const getMaintainers = async () => [MAINTAINER];
+
+test('Remind maintainers to assign a maintainer when an issue has no maintainer assignees', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -76,16 +80,16 @@ test('Remind maintainers to assign a maintainer when an issue has no assignees a
       options,
       updatedAt: getDaysAgoTimestamp(8),
       createdAt: getDaysAgoTimestamp(8),
-      assignees: ['non-maintainer']
+      assignees: [NON_MAINTAINER]
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    getIssues(issues),
+    createGetIssues(issues),
     async () => [],
     async () => new Date().toDateString(),
     undefined,
-    async () => ['maintainer']
+    getMaintainers
   );
   await processor.setMaintainers();
   const createCommentSpy = jest.spyOn(processor, 'createComment');
@@ -94,14 +98,15 @@ test('Remind maintainers to assign a maintainer when an issue has no assignees a
   expect(createCommentSpy).toHaveBeenCalledTimes(1);
   expect(createCommentSpy).toHaveBeenCalledWith(
     expect.anything(),
-    'Reminder to MLflow maintainers. Please assign a maintainer to this issue and start triaging.'
+    expect.stringContaining(
+      'Please assign a maintainer and start triaging this issue.'
+    )
   );
 });
 
-test('Remind maintainers to reply when the last comment was posted by a non-maintainer user', async () => {
+test('Remind maintainers to reply when last comment was posted by non-maintainer', async () => {
   const options = {
     ...DefaultProcessorOptions,
-
     mlflow: true
   };
   const issues: Issue[] = [
@@ -109,12 +114,12 @@ test('Remind maintainers to reply when the last comment was posted by a non-main
       options,
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15),
-      assignees: ['non-maintainer']
+      assignees: [MAINTAINER]
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    getIssues(issues),
+    createGetIssues(issues),
     async () => [
       {
         user: {
@@ -127,7 +132,7 @@ test('Remind maintainers to reply when the last comment was posted by a non-main
     ],
     async () => new Date().toDateString(),
     undefined,
-    async () => ['maintainer']
+    getMaintainers
   );
   await processor.setMaintainers();
 
@@ -137,14 +142,13 @@ test('Remind maintainers to reply when the last comment was posted by a non-main
   expect(createCommentSpy).toHaveBeenCalledTimes(1);
   expect(createCommentSpy).toHaveBeenCalledWith(
     expect.anything(),
-    'Reminder to MLflow maintainers. Please reply to comments.'
+    expect.stringContaining('Please reply to comments.')
   );
 });
 
-test('Remind issue author to reply when the last comment was posted by a maintainer user', async () => {
+test('Remind issue author to reply when last comment was posted by maintainer', async () => {
   const options = {
     ...DefaultProcessorOptions,
-
     mlflow: true
   };
   const issues: Issue[] = [
@@ -152,20 +156,20 @@ test('Remind issue author to reply when the last comment was posted by a maintai
       options,
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15),
-      assignees: ['non-maintainer'],
+      assignees: [MAINTAINER],
       user: {
-        login: 'non-maintainer',
+        login: NON_MAINTAINER,
         type: 'User'
       }
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    getIssues(issues),
+    createGetIssues(issues),
     async () => [
       {
         user: {
-          login: 'maintainer',
+          login: MAINTAINER,
           type: 'User'
         },
         body: 'comment',
@@ -174,7 +178,7 @@ test('Remind issue author to reply when the last comment was posted by a maintai
     ],
     async () => new Date().toDateString(),
     undefined,
-    async () => ['maintainer']
+    getMaintainers
   );
   await processor.setMaintainers();
   const createCommentSpy = jest.spyOn(processor, 'createComment');
@@ -183,11 +187,11 @@ test('Remind issue author to reply when the last comment was posted by a maintai
   expect(createCommentSpy).toHaveBeenCalledTimes(1);
   expect(createCommentSpy).toHaveBeenCalledWith(
     expect.anything(),
-    '@non-maintainer Any updates here?'
+    expect.stringContaining('@non-maintainer Any updates here?')
   );
 });
 
-test('Ignore comments posted by a bot', async () => {
+test('Skip processing issue if last comment was posted by bot', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -196,12 +200,13 @@ test('Ignore comments posted by a bot', async () => {
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(15),
-      createdAt: getDaysAgoTimestamp(15)
+      createdAt: getDaysAgoTimestamp(15),
+      assignees: [MAINTAINER]
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    getIssues(issues),
+    createGetIssues(issues),
     async () => [
       {
         user: {
@@ -214,7 +219,7 @@ test('Ignore comments posted by a bot', async () => {
     ],
     async () => new Date().toDateString(),
     undefined,
-    async () => ['maintainer']
+    getMaintainers
   );
   await processor.setMaintainers();
 
@@ -224,7 +229,7 @@ test('Ignore comments posted by a bot', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('Ignore issues that have a has-closing-pr label', async () => {
+test('Ignore issue that is triaged and has has-closing-pr label', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -234,14 +239,26 @@ test('Ignore issues that have a has-closing-pr label', async () => {
       options,
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15),
-      labels: ['has-closing-pr']
+      labels: ['has-closing-pr'],
+      assignees: ['maintainer']
     })
   ];
   const processor = new IssuesProcessorMock(
     options,
-    getIssues(issues),
-    async () => [],
-    async () => new Date().toDateString()
+    createGetIssues(issues),
+    async () => [
+      {
+        user: {
+          login: MAINTAINER,
+          type: 'User'
+        },
+        body: 'Thanks for filing the PR!',
+        created_at: getDaysAgoTimestamp(15)
+      }
+    ],
+    async () => new Date().toDateString(),
+    undefined,
+    getMaintainers
   );
   await processor.setMaintainers();
 
@@ -251,7 +268,7 @@ test('Ignore issues that have a has-closing-pr label', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('Ignore stale issues', async () => {
+test('Ignore stale issue', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -266,7 +283,7 @@ test('Ignore stale issues', async () => {
   ];
   const processor = new IssuesProcessorMock(
     options,
-    getIssues(issues),
+    createGetIssues(issues),
     async () => [],
     async () => new Date().toDateString()
   );
@@ -278,7 +295,7 @@ test('Ignore stale issues', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('Ignore issues created before start-date', async () => {
+test('Ignore issue created before start-date', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true,
@@ -293,7 +310,7 @@ test('Ignore issues created before start-date', async () => {
   ];
   const processor = new IssuesProcessorMock(
     options,
-    getIssues(issues),
+    createGetIssues(issues),
     async () => [],
     async () => new Date().toDateString()
   );
@@ -305,7 +322,7 @@ test('Ignore issues created before start-date', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('Ignore issues in milestones', async () => {
+test('Ignore milestone', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -320,7 +337,7 @@ test('Ignore issues in milestones', async () => {
   ];
   const processor = new IssuesProcessorMock(
     options,
-    getIssues(issues),
+    createGetIssues(issues),
     async () => [],
     async () => new Date().toDateString()
   );
