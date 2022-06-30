@@ -548,7 +548,8 @@ class IssuesProcessor {
                 }
                 const MARKERS = {
                     assignMaintainer: '<!-- assign-maintainer -->',
-                    reminderToMaintainers: '<!-- reminder-to-maintainers -->'
+                    reminderToMaintainers: '<!-- reminder-to-maintainers -->',
+                    reminderToIssueAuthor: '<!-- reminder-to-issue-author -->'
                 };
                 if (issue.isPullRequest) {
                     // TODO
@@ -599,7 +600,7 @@ class IssuesProcessor {
                         issueLogger.info(`Did a maintainer post the last comment? ${maintainerPostedLastComment}`);
                         if (maintainerPostedLastComment) {
                             const mention = issue.user ? `@${issue.user.login}` : '';
-                            yield this.createComment(issue, `${mention} Any updates here? If you're working on a PR, please link it to this issue.`);
+                            yield this.createComment(issue, `${MARKERS.reminderToIssueAuthor}\n${mention} Any updates here? If you're working on a PR, please link it to this issue.`);
                             return;
                         }
                         else {
