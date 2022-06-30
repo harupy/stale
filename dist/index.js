@@ -559,11 +559,12 @@ class IssuesProcessor {
             }
             if (this.options.mlflow && !issue.isStale && !issue.milestone) {
                 const createMentions = (logins) => logins.map(login => `@${login}`).join(' ');
+                const createMarkdownComment = (message) => `<!-- ${message} -->`;
                 const isMaintainer = (login) => this.maintainers.includes(login);
                 const TAGS = {
-                    assignMaintainer: '<!-- assign-maintainer -->',
-                    reminderToMaintainers: '<!-- reminder-to-maintainers -->',
-                    reminderToIssueAuthor: '<!-- reminder-to-issue-author -->'
+                    assignMaintainer: createMarkdownComment('assign-maintainer'),
+                    reminderToMaintainers: createMarkdownComment('reminder-to-maintainers'),
+                    reminderToIssueAuthor: createMarkdownComment('reminder-to-issue-author')
                 };
                 if (issue.isPullRequest) {
                     // TODO

@@ -357,13 +357,16 @@ export class IssuesProcessor {
       const createMentions = (logins: string[]): string =>
         logins.map(login => `@${login}`).join(' ');
 
+      const createMarkdownComment = (message: string): string =>
+        `<!-- ${message} -->`;
+
       const isMaintainer = (login: string): boolean =>
         this.maintainers.includes(login);
 
       const TAGS = {
-        assignMaintainer: '<!-- assign-maintainer -->',
-        reminderToMaintainers: '<!-- reminder-to-maintainers -->',
-        reminderToIssueAuthor: '<!-- reminder-to-issue-author -->'
+        assignMaintainer: createMarkdownComment('assign-maintainer'),
+        reminderToMaintainers: createMarkdownComment('reminder-to-maintainers'),
+        reminderToIssueAuthor: createMarkdownComment('reminder-to-issue-author')
       };
 
       if (issue.isPullRequest) {
