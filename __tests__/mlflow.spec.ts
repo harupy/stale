@@ -1,112 +1,21 @@
-import {Issue} from '../src/classes/issue';
-import {IUser} from '../src/interfaces/user';
-import {IIssuesProcessorOptions} from '../src/interfaces/issues-processor-options';
-import {IsoDateString} from '../src/types/iso-date-string';
-import {IssuesProcessorMock} from './classes/issues-processor-mock';
-import {IPullRequest} from '../src/interfaces/pull-request';
-import {IComment} from '../src/interfaces/comment';
-
 import {DefaultProcessorOptions} from './constants/default-processor-options';
-import {generateIssue as _generateIssue} from './functions/generate-issue';
 
-function getDaysAgoTimestamp(
-  numOfDays: number,
-  date: Date = new Date()
-): IsoDateString {
-  const daysAgo = new Date(date.getTime());
-  daysAgo.setDate(date.getDate() - numOfDays);
-  const withoutMilliseconds = daysAgo.toISOString().split('.')[0];
-  return `${withoutMilliseconds}Z`;
-}
-const TODAY = getDaysAgoTimestamp(0);
-
-function createGetIssues(issues: Issue[]): (page: number) => Promise<Issue[]> {
-  return async (page: number) => issues.slice((page - 1) * 100, page * 100);
-}
-
-type GenerateIssueParameters = {
-  options: IIssuesProcessorOptions;
-  id?: number;
-  title?: string;
-  updatedAt?: IsoDateString;
-  createdAt?: IsoDateString;
-  isPullRequest?: boolean;
-  labels?: string[];
-  isClosed?: boolean;
-  isLocked?: boolean;
-  milestone?: string;
-  assignees?: string[];
-  user?: IUser;
-};
-
-const generateIssue = ({
-  options,
-  id = 1,
-  title = 'Issue',
-  updatedAt = TODAY,
-  createdAt = TODAY,
-  isPullRequest = false,
-  labels = [],
-  isClosed = false,
-  isLocked = false,
-  milestone = undefined,
-  assignees = [],
-  user = undefined
-}: GenerateIssueParameters): Issue => {
-  return _generateIssue(
-    options,
-    id,
-    title,
-    updatedAt,
-    createdAt,
-    isPullRequest,
-    labels,
-    isClosed,
-    isLocked,
-    milestone,
-    assignees,
-    user
-  );
-};
-
-const MAINTAINER = 'maintainer';
-const NON_MAINTAINER = 'non-maintainer';
-
-type CreateIssueProcessorMockParameters = {
-  options: IIssuesProcessorOptions;
-  getIssues: (page: number) => Promise<Issue[]>;
-  listIssueComments?: (issue: Issue, sinceDate: string) => Promise<IComment[]>;
-  getLabelCreationDate?: (
-    issue: Issue,
-    label: string
-  ) => Promise<string | undefined>;
-  getPullRequest?: (issue: Issue) => Promise<IPullRequest | undefined | void>;
-  getMaintainers?: () => Promise<string[]>;
-};
-
-const createIssueProcessorMock = ({
-  options,
-  getIssues,
-  listIssueComments = async () => [],
-  getLabelCreationDate = async () => new Date().toDateString(),
-  getPullRequest = undefined,
-  getMaintainers = async () => [MAINTAINER]
-}: CreateIssueProcessorMockParameters): IssuesProcessorMock =>
-  new IssuesProcessorMock(
-    options,
-    getIssues,
-    listIssueComments,
-    getLabelCreationDate,
-    getPullRequest,
-    getMaintainers
-  );
+import {
+  TODAY,
+  MAINTAINER,
+  NON_MAINTAINER,
+  generateIssue,
+  createGetIssues,
+  getDaysAgoTimestamp,
+  createIssueProcessorMock
+} from './mlflow-utils';
 
 test('Remind maintainers to assign a maintainer when an issue has no maintainer assignees', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
   };
-  const issues: Issue[] = [
+  const issues = [
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(8),
@@ -136,7 +45,7 @@ test('Remind maintainers to reply when last comment was posted by non-maintainer
     ...DefaultProcessorOptions,
     mlflow: true
   };
-  const issues: Issue[] = [
+  const issues = [
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(15),
@@ -174,7 +83,7 @@ test('Remind issue author to reply when last comment was posted by maintainer', 
     ...DefaultProcessorOptions,
     mlflow: true
   };
-  const issues: Issue[] = [
+  const issues = [
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(15),
@@ -216,7 +125,7 @@ test('Skip processing issue if last comment was posted by bot', async () => {
     ...DefaultProcessorOptions,
     mlflow: true
   };
-  const issues: Issue[] = [
+  const issues = [
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(15),
@@ -250,7 +159,7 @@ test('Ignore issue that is triaged and has has-closing-pr label', async () => {
     ...DefaultProcessorOptions,
     mlflow: true
   };
-  const issues: Issue[] = [
+  const issues = [
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(15),
@@ -286,7 +195,7 @@ test('Ignore stale issue', async () => {
     ...DefaultProcessorOptions,
     mlflow: true
   };
-  const issues: Issue[] = [
+  const issues = [
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(15),
@@ -312,7 +221,7 @@ test('Ignore issue created before start-date', async () => {
     mlflow: true,
     startDate: TODAY
   };
-  const issues: Issue[] = [
+  const issues = [
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(15),
@@ -336,7 +245,7 @@ test('Ignore milestone', async () => {
     ...DefaultProcessorOptions,
     mlflow: true
   };
-  const issues: Issue[] = [
+  const issues = [
     generateIssue({
       options,
       updatedAt: getDaysAgoTimestamp(15),
