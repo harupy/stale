@@ -365,6 +365,7 @@ export class IssuesProcessor {
 
       const TAGS = {
         assignMaintainer: createMarkdownComment('assign-maintainer'),
+        triageIssue: createMarkdownComment('assign-maintainer'),
         reminderToMaintainers: createMarkdownComment('reminder-to-maintainers'),
         reminderToIssueAuthor: createMarkdownComment('reminder-to-issue-author')
       };

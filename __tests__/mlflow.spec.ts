@@ -189,6 +189,50 @@ test('Ignore issue that is triaged and has has-closing-pr label', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
+test('Ignore issue if it is triaged, has has-closing-pr label, and last comment is from non-maintainer', async () => {
+  const options = {
+    ...DefaultProcessorOptions,
+    mlflow: true
+  };
+  const issues = [
+    generateIssue({
+      options,
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15),
+      labels: ['has-closing-pr'],
+      assignees: ['maintainer']
+    })
+  ];
+
+  const processor = createIssueProcessorMock({
+    options,
+    getIssues: createGetIssues(issues),
+    listIssueComments: async () => [
+      {
+        user: {
+          login: MAINTAINER,
+          type: 'User'
+        },
+        body: 'Thanks for filing the PR!',
+        created_at: getDaysAgoTimestamp(15)
+      },
+      {
+        user: {
+          login: NON_MAINTAINER,
+          type: 'User'
+        },
+        body: 'Thanks!',
+        created_at: getDaysAgoTimestamp(15)
+      }
+    ]
+  });
+  await processor.setMaintainers();
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
+  await processor.processIssues(1);
+
+  expect(createCommentSpy).not.toHaveBeenCalled();
+});
+
 test('Ignore stale issue', async () => {
   const options = {
     ...DefaultProcessorOptions,
