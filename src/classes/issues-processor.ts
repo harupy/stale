@@ -353,7 +353,7 @@ export class IssuesProcessor {
       }
     }
 
-    if (this.options.mlflow && !issue.isStale && !issue.milestone) {
+    if (this.options.mlflow && !issue.isStale) {
       const createMentions = (logins: string[]): string =>
         logins.map(login => `@${login}`).join(' ');
 
@@ -492,6 +492,13 @@ export class IssuesProcessor {
         ) {
           issueLogger.info(
             'The last comment is a reminder to maintainers posted by a bot.'
+          );
+          return;
+        }
+
+        if (issue.milestone) {
+          issueLogger.info(
+            'This issue is a milestone, should not be stalled/closed.'
           );
           return;
         }
