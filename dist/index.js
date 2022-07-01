@@ -401,6 +401,11 @@ class IssuesProcessor {
         const diffTime = Math.abs(new Date().getTime() - new Date(timestamp).getTime());
         return diffTime / (1000 * 60 * 60 * 24);
     }
+    static isOlderThanDaysAgo(timestamp, num_days) {
+        const daysInMillis = 1000 * 60 * 60 * 24 * num_days;
+        const millisSinceLastUpdated = new Date().getTime() - new Date(timestamp).getTime();
+        return millisSinceLastUpdated >= daysInMillis;
+    }
     static getNow() {
         const withoutMilliseconds = new Date().toISOString().split('.')[0];
         return `${withoutMilliseconds}Z`;
@@ -557,12 +562,13 @@ class IssuesProcessor {
                     return; // Don't process issues which were created before the start date
                 }
             }
-            if (this.options.mlflow && !issue.isStale && !issue.milestone) {
+            if (this.options.mlflow && !issue.isStale) {
                 const createMentions = (logins) => logins.map(login => `@${login}`).join(' ');
                 const createMarkdownComment = (message) => `<!-- ${message} -->`;
                 const isMaintainer = (login) => this.maintainers.includes(login);
                 const TAGS = {
                     assignMaintainer: createMarkdownComment('assign-maintainer'),
+                    triageIssue: createMarkdownComment('assign-maintainer'),
                     reminderToMaintainers: createMarkdownComment('reminder-to-maintainers'),
                     reminderToIssueAuthor: createMarkdownComment('reminder-to-issue-author')
                 };
@@ -572,14 +578,16 @@ class IssuesProcessor {
                 else {
                     const daysSinceIssueCreated = IssuesProcessor.getDaysSince(issue.created_at).toFixed(2);
                     issueLogger.info(`Days since this issue was created: ${daysSinceIssueCreated}`);
+                    if (!IssuesProcessor.isOlderThanDaysAgo(issue.created_at, this.options.daysBeforeAssigneeReminder)) {
+                        return;
+                    }
                     issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
                     const hasMaintainerAssignee = issue.assignees.some(user => isMaintainer(user.login));
                     const issueComments = yield this.listIssueComments(issue, issue.created_at);
                     const lastComment = issueComments.length > 0
                         ? issueComments[issueComments.length - 1]
                         : undefined;
-                    if (!hasMaintainerAssignee &&
-                        !IssuesProcessor._updatedSince(issue.created_at, this.options.daysBeforeAssigneeReminder)) {
+                    if (!hasMaintainerAssignee) {
                         issueLogger.info('This issue has no assignees');
                         if (!(lastComment && ((_b = lastComment.body) === null || _b === void 0 ? void 0 : _b.includes(TAGS.assignMaintainer)))) {
                             const maintainersToMention = [
@@ -594,6 +602,10 @@ class IssuesProcessor {
                         return;
                     }
                     if (!lastComment) {
+                        const mentions = createMentions(issue.assignees
+                            .filter(({ login }) => isMaintainer(login))
+                            .map(({ login }) => login));
+                        this.createComment(issue, `${TAGS.triageIssue}\n${mentions} Please triage this issue.`);
                         return;
                     }
                     const hasClosingPr = issue.labels.some(({ name }) => name === 'has-closing-pr');
@@ -606,8 +618,10 @@ class IssuesProcessor {
                     const lastCommentCreatedAt = lastComment.created_at || IssuesProcessor.getNow();
                     const daysSinceLastCommentCreated = IssuesProcessor.getDaysSince(lastCommentCreatedAt).toFixed(2);
                     issueLogger.info(`Days since the last comment was created: ${daysSinceLastCommentCreated}`);
-                    if (!botPostedLastComment &&
-                        !IssuesProcessor._updatedSince(lastCommentCreatedAt, this.options.daysBeforeReplyReminder)) {
+                    if (!IssuesProcessor.isOlderThanDaysAgo(lastCommentCreatedAt, this.options.daysBeforeReplyReminder)) {
+                        return;
+                    }
+                    if (!botPostedLastComment) {
                         const maintainerPostedLastComment = lastComment.user
                             ? isMaintainer(lastComment.user.login)
                             : false;
@@ -634,6 +648,10 @@ class IssuesProcessor {
                     if (botPostedLastComment &&
                         ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes(TAGS.reminderToMaintainers))) {
                         issueLogger.info('The last comment is a reminder to maintainers posted by a bot.');
+                        return;
+                    }
+                    if (issue.milestone) {
+                        issueLogger.info('This issue is a milestone, should not be stalled/closed.');
                         return;
                     }
                 }
