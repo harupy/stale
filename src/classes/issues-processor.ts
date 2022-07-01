@@ -45,6 +45,17 @@ export class IssuesProcessor {
     return diffTime / (1000 * 60 * 60 * 24);
   }
 
+  private static isOlderThanDaysAgo(
+    timestamp: string,
+    num_days: number
+  ): boolean {
+    const daysInMillis = 1000 * 60 * 60 * 24 * num_days;
+    const millisSinceLastUpdated =
+      new Date().getTime() - new Date(timestamp).getTime();
+
+    return millisSinceLastUpdated >= daysInMillis;
+  }
+
   private static getNow(): string {
     const withoutMilliseconds = new Date().toISOString().split('.')[0];
     return `${withoutMilliseconds}Z`;
@@ -379,6 +390,15 @@ export class IssuesProcessor {
         issueLogger.info(
           `Days since this issue was created: ${daysSinceIssueCreated}`
         );
+        if (
+          !IssuesProcessor.isOlderThanDaysAgo(
+            issue.created_at,
+            this.options.daysBeforeAssigneeReminder
+          )
+        ) {
+          return;
+        }
+
         issueLogger.info(
           `Assignees on this issue: ${issue.assignees.map(({login}) => login)}`
         );
@@ -394,13 +414,7 @@ export class IssuesProcessor {
             ? issueComments[issueComments.length - 1]
             : undefined;
 
-        if (
-          !hasMaintainerAssignee &&
-          !IssuesProcessor._updatedSince(
-            issue.created_at,
-            this.options.daysBeforeAssigneeReminder
-          )
-        ) {
+        if (!hasMaintainerAssignee) {
           issueLogger.info('This issue has no assignees');
           if (
             !(lastComment && lastComment.body?.includes(TAGS.assignMaintainer))
@@ -421,6 +435,15 @@ export class IssuesProcessor {
         }
 
         if (!lastComment) {
+          const mentions = createMentions(
+            issue.assignees
+              .filter(({login}) => isMaintainer(login))
+              .map(({login}) => login)
+          );
+          this.createComment(
+            issue,
+            `${TAGS.triageIssue}\n${mentions} Please triage this issue.`
+          );
           return;
         }
 
@@ -445,12 +468,14 @@ export class IssuesProcessor {
           `Days since the last comment was created: ${daysSinceLastCommentCreated}`
         );
         if (
-          !botPostedLastComment &&
-          !IssuesProcessor._updatedSince(
+          !IssuesProcessor.isOlderThanDaysAgo(
             lastCommentCreatedAt,
             this.options.daysBeforeReplyReminder
           )
         ) {
+          return;
+        }
+        if (!botPostedLastComment) {
           const maintainerPostedLastComment = lastComment.user
             ? isMaintainer(lastComment.user.login)
             : false;

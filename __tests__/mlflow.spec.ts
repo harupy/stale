@@ -1,3 +1,4 @@
+import {Assignees} from '../src/classes/assignees';
 import {DefaultProcessorOptions} from './constants/default-processor-options';
 import {
   TODAY,
@@ -9,7 +10,7 @@ import {
   createIssueProcessorMock
 } from './mlflow-test-utils';
 
-test('Remind maintainers to assign a maintainer when an issue has no maintainer assignees', async () => {
+test('Remind maintainers to assign maintainer when issue has no maintainer assignees', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -39,6 +40,34 @@ test('Remind maintainers to assign a maintainer when an issue has no maintainer 
   );
 });
 
+test('Send triage reminder if issue has assignee but has not ', async () => {
+  const options = {
+    ...DefaultProcessorOptions,
+    mlflow: true
+  };
+  const issues = [
+    generateIssue({
+      options,
+      updatedAt: getDaysAgoTimestamp(8),
+      createdAt: getDaysAgoTimestamp(8),
+      assignees: [MAINTAINER]
+    })
+  ];
+  const processor = createIssueProcessorMock({
+    options,
+    getIssues: createGetIssues(issues)
+  });
+  await processor.setMaintainers();
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
+  await processor.processIssues(1);
+
+  expect(createCommentSpy).toHaveBeenCalledTimes(1);
+  expect(createCommentSpy).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.stringContaining(`@${MAINTAINER} Please triage this issue.`)
+  );
+});
+
 test('Remind maintainers to reply when last comment was posted by non-maintainer', async () => {
   const options = {
     ...DefaultProcessorOptions,
@@ -58,7 +87,7 @@ test('Remind maintainers to reply when last comment was posted by non-maintainer
     listIssueComments: async () => [
       {
         user: {
-          login: 'non-maintainer',
+          login: NON_MAINTAINER,
           type: 'User'
         },
         body: 'comment',
@@ -283,7 +312,7 @@ test('Ignore issue created before start-date', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('Ignore milestone', async () => {
+test('Bot does not stale or close milestones', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -293,16 +322,35 @@ test('Ignore milestone', async () => {
       options,
       updatedAt: getDaysAgoTimestamp(15),
       createdAt: getDaysAgoTimestamp(15),
-      milestone: 'milestone'
+      milestone: 'milestone',
+      assignees: [MAINTAINER]
     })
   ];
   const processor = createIssueProcessorMock({
     options,
-    getIssues: createGetIssues(issues)
+    getIssues: createGetIssues(issues),
+    listIssueComments: async () => [
+      {
+        user: {
+          login: NON_MAINTAINER,
+          type: 'User'
+        },
+        body: 'I found this issue on Ubuntu 18.04.',
+        created_at: getDaysAgoTimestamp(7)
+      },
+      {
+        user: {
+          login: 'Bot',
+          type: 'bot'
+        },
+        body: 'Any updates here?',
+        created_at: getDaysAgoTimestamp(21)
+      }
+    ]
   });
   await processor.setMaintainers();
   const createCommentSpy = jest.spyOn(processor, 'createComment');
   await processor.processIssues(1);
-
   expect(createCommentSpy).not.toHaveBeenCalled();
+  expect(processor.staleIssues).toHaveLength(0);
 });
