@@ -1,4 +1,3 @@
-import {Assignees} from '../src/classes/assignees';
 import {DefaultProcessorOptions} from './constants/default-processor-options';
 import {
   TODAY,
@@ -10,7 +9,7 @@ import {
   createIssueProcessorMock
 } from './mlflow-test-utils';
 
-test('Remind maintainers to assign maintainer when issue has no maintainer assignees', async () => {
+test('Remind maintainers to assign maintainer if issue has no maintainer assignee', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -40,7 +39,7 @@ test('Remind maintainers to assign maintainer when issue has no maintainer assig
   );
 });
 
-test('Send triage reminder if issue has assignee but has not ', async () => {
+test('Remind maintainer to triage if issue has assignee but no comment', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -68,7 +67,7 @@ test('Send triage reminder if issue has assignee but has not ', async () => {
   );
 });
 
-test('Remind maintainers to reply when last comment was posted by non-maintainer', async () => {
+test('Remind maintainer to reply when last comment was posted by non-maintainer', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -148,7 +147,7 @@ test('Remind issue author to reply when last comment was posted by maintainer', 
   );
 });
 
-test('Skip processing issue if last comment was posted by bot', async () => {
+test('Ignore issue if last comment was posted by bot', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -182,7 +181,7 @@ test('Skip processing issue if last comment was posted by bot', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('Ignore issue that is triaged and has has-closing-pr label', async () => {
+test('Ignore issue if it is triaged and has has-closing-pr label', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -218,7 +217,7 @@ test('Ignore issue that is triaged and has has-closing-pr label', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('Ignore issue if it is triaged, has has-closing-pr label, and last comment is from non-maintainer', async () => {
+test('Ignore issue if it is triaged, has has-closing-pr label, and last comment was posted by from non-maintainer', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true
@@ -287,7 +286,7 @@ test('Ignore stale issue', async () => {
   expect(createCommentSpy).not.toHaveBeenCalled();
 });
 
-test('Ignore issue created before start-date', async () => {
+test('Ignore issues created before start-date', async () => {
   const options = {
     ...DefaultProcessorOptions,
     mlflow: true,
