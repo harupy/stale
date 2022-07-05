@@ -48,6 +48,6 @@ export enum Option {
   IgnorePrUpdates = 'ignore-pr-updates',
   ExemptDraftPr = 'exempt-draft-pr',
   Mlflow = 'mlflow',
-  daysBeforeAssigneeReminder = 'days-before-assignee-reminder',
+  daysBeforeTriageReminders = 'days-before-triage-reminder',
   daysBeforeReplyReminder = 'days-before-reply-reminder'
 }

@@ -393,7 +393,7 @@ export class IssuesProcessor {
         if (
           !IssuesProcessor.isOlderThanDaysAgo(
             issue.created_at,
-            this.options.daysBeforeAssigneeReminder
+            this.options.daysBeforeTriageReminders
           )
         ) {
           return;

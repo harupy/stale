@@ -10,7 +10,7 @@ on:
         description: 'days-before-close'
         required: false
         default: 1
-      daysBeforeAssigneeReminder:
+      daysBeforeTriageReminders:
         description: 'days-before-assignee-reminder'
         required: false
         default: 0
@@ -34,5 +34,5 @@ jobs:
           start-date: '2022-06-16T00:00:00Z'
           days-before-pr-stale: -1
           days-before-pr-close: -1
-          days-before-assignee-reminder: ${{ inputs.daysBeforeAssigneeReminder }}
+          days-before-assignee-reminder: ${{ inputs.daysBeforeTriageReminders }}
           days-before-reply-reminder: ${{ inputs.daysBeforeReplyReminder }}

@@ -578,7 +578,7 @@ class IssuesProcessor {
                 else {
                     const daysSinceIssueCreated = IssuesProcessor.getDaysSince(issue.created_at).toFixed(2);
                     issueLogger.info(`Days since this issue was created: ${daysSinceIssueCreated}`);
-                    if (!IssuesProcessor.isOlderThanDaysAgo(issue.created_at, this.options.daysBeforeAssigneeReminder)) {
+                    if (!IssuesProcessor.isOlderThanDaysAgo(issue.created_at, this.options.daysBeforeTriageReminders)) {
                         return;
                     }
                     issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
@@ -2033,7 +2033,7 @@ var Option;
     Option["IgnorePrUpdates"] = "ignore-pr-updates";
     Option["ExemptDraftPr"] = "exempt-draft-pr";
     Option["Mlflow"] = "mlflow";
-    Option["daysBeforeAssigneeReminder"] = "days-before-assignee-reminder";
+    Option["daysBeforeTriageReminders"] = "days-before-triage-reminder";
     Option["daysBeforeReplyReminder"] = "days-before-reply-reminder";
 })(Option = exports.Option || (exports.Option = {}));
 
@@ -2348,7 +2348,7 @@ function _getAndValidateArgs() {
         ignorePrUpdates: _toOptionalBoolean('ignore-pr-updates'),
         exemptDraftPr: core.getInput('exempt-draft-pr') === 'true',
         mlflow: true,
-        daysBeforeAssigneeReminder: parseInt(core.getInput('days-before-assignee-reminder')),
+        daysBeforeTriageReminders: parseInt(core.getInput('days-before-triage-reminder')),
         daysBeforeReplyReminder: parseInt(core.getInput('days-before-reply-reminder'))
     };
     for (const numberInput of [

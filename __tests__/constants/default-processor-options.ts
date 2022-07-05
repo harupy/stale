@@ -52,6 +52,6 @@ export const DefaultProcessorOptions: IIssuesProcessorOptions = Object.freeze({
   ignorePrUpdates: undefined,
   exemptDraftPr: false,
   mlflow: false,
-  daysBeforeAssigneeReminder: 7,
+  daysBeforeTriageReminders: 7,
   daysBeforeReplyReminder: 14
 });

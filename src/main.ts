@@ -90,8 +90,8 @@ function _getAndValidateArgs(): IIssuesProcessorOptions {
     ignorePrUpdates: _toOptionalBoolean('ignore-pr-updates'),
     exemptDraftPr: core.getInput('exempt-draft-pr') === 'true',
     mlflow: true,
-    daysBeforeAssigneeReminder: parseInt(
-      core.getInput('days-before-assignee-reminder')
+    daysBeforeTriageReminders: parseInt(
+      core.getInput('days-before-triage-reminder')
     ),
     daysBeforeReplyReminder: parseInt(
       core.getInput('days-before-reply-reminder')

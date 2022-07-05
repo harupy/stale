@@ -193,8 +193,8 @@ inputs:
     default: ''
     required: false
   # Special options for mlflow
-  days-before-assignee-reminder:
-    description: 'Maintainers should assign a maintainer to an issue within a specified number of days.'
+  days-before-triage-reminder:
+    description: 'Maintainers should assign a maintainer and start triaging within a specified number of days.'
     default: '7'
     required: false
   days-before-reply-reminder:
