@@ -37,6 +37,7 @@ test('Remind maintainers to assign maintainer if issue has no maintainer assigne
       'Please assign a maintainer and start triaging this issue.'
     )
   );
+  expect(processor.staleIssues).toHaveLength(0);
 });
 
 test('Remind maintainer to triage if issue has assignee but no comment', async () => {
@@ -65,6 +66,7 @@ test('Remind maintainer to triage if issue has assignee but no comment', async (
     expect.anything(),
     expect.stringContaining(`@${MAINTAINER} Please triage this issue.`)
   );
+  expect(processor.staleIssues).toHaveLength(0);
 });
 
 test('Remind maintainer to reply when last comment was posted by non-maintainer', async () => {
@@ -103,6 +105,7 @@ test('Remind maintainer to reply when last comment was posted by non-maintainer'
     expect.anything(),
     expect.stringContaining('Please reply to comments.')
   );
+  expect(processor.staleIssues).toHaveLength(0);
 });
 
 test('Remind issue author to reply when last comment was posted by maintainer', async () => {
@@ -145,6 +148,7 @@ test('Remind issue author to reply when last comment was posted by maintainer', 
     expect.anything(),
     expect.stringContaining('@non-maintainer Any updates here?')
   );
+  expect(processor.staleIssues).toHaveLength(0);
 });
 
 test('Ignore issue if last comment was posted by bot', async () => {
@@ -179,6 +183,7 @@ test('Ignore issue if last comment was posted by bot', async () => {
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();
+  expect(processor.staleIssues).toHaveLength(0);
 });
 
 test('Ignore issue if it is triaged and has has-closing-pr label', async () => {
@@ -215,6 +220,7 @@ test('Ignore issue if it is triaged and has has-closing-pr label', async () => {
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();
+  expect(processor.staleIssues).toHaveLength(0);
 });
 
 test('Ignore issue if it is triaged, has has-closing-pr label, and last comment was posted by from non-maintainer', async () => {
@@ -259,6 +265,7 @@ test('Ignore issue if it is triaged, has has-closing-pr label, and last comment 
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();
+  expect(processor.staleIssues).toHaveLength(0);
 });
 
 test('Ignore stale issue', async () => {
@@ -284,6 +291,7 @@ test('Ignore stale issue', async () => {
   await processor.processIssues(1);
 
   expect(createCommentSpy).not.toHaveBeenCalled();
+  expect(processor.staleIssues).toHaveLength(0);
 });
 
 test('Ignore issues created before start-date', async () => {
