@@ -186,6 +186,41 @@ test('Ignore issue if last comment was posted by bot', async () => {
   expect(processor.staleIssues).toHaveLength(0);
 });
 
+test('Ignore issue if last comment was posted by mlflow-automation bot', async () => {
+  const options = {
+    ...DefaultProcessorOptions,
+    mlflow: true
+  };
+  const issues = [
+    generateIssue({
+      options,
+      updatedAt: getDaysAgoTimestamp(15),
+      createdAt: getDaysAgoTimestamp(15),
+      assignees: [MAINTAINER]
+    })
+  ];
+  const processor = createIssueProcessorMock({
+    options,
+    getIssues: createGetIssues(issues),
+    listIssueComments: async () => [
+      {
+        user: {
+          login: 'mlflow-automation',
+          type: 'User'
+        },
+        body: 'comment',
+        created_at: getDaysAgoTimestamp(15)
+      }
+    ]
+  });
+  await processor.setMaintainers();
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
+  await processor.processIssues(1);
+
+  expect(createCommentSpy).not.toHaveBeenCalled();
+  expect(processor.staleIssues).toHaveLength(0);
+});
+
 test('Ignore issue if it is triaged and has has-closing-pr label', async () => {
   const options = {
     ...DefaultProcessorOptions,

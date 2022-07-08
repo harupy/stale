@@ -25,6 +25,7 @@ import {StaleOperations} from './stale-operations';
 import {Statistics} from './statistics';
 import {LoggerService} from '../services/logger.service';
 import {OctokitIssue} from '../interfaces/issue';
+import {IUser} from '../interfaces/user';
 
 /***
  * Handle processing of issues for staleness/closure.
@@ -365,14 +366,22 @@ export class IssuesProcessor {
     }
 
     if (this.options.mlflow && !issue.isStale) {
+      const mlflowAutomationUsername = 'mlflow-automation';
       const createMentions = (logins: string[]): string =>
         logins.map(login => `@${login}`).join(' ');
 
       const createMarkdownComment = (message: string): string =>
         `<!-- ${message} -->`;
 
-      const isMaintainer = (login: string): boolean =>
-        this.maintainers.includes(login);
+      const isMaintainer = (user: IUser): boolean =>
+        user.type === 'User' && this.maintainers.includes(user.login);
+
+      const isBot = (user: IUser | null) => {
+        if (!user) {
+          return false;
+        }
+        return user.type !== 'User' || user.login === mlflowAutomationUsername;
+      };
 
       const TAGS = {
         assignMaintainer: createMarkdownComment('assign-maintainer'),
@@ -403,7 +412,7 @@ export class IssuesProcessor {
           `Assignees on this issue: ${issue.assignees.map(({login}) => login)}`
         );
         const hasMaintainerAssignee = issue.assignees.some(user =>
-          isMaintainer(user.login)
+          isMaintainer(user)
         );
         const issueComments = await this.listIssueComments(
           issue,
@@ -437,7 +446,7 @@ export class IssuesProcessor {
         if (!lastComment) {
           const mentions = createMentions(
             issue.assignees
-              .filter(({login}) => isMaintainer(login))
+              .filter(assignee => isMaintainer(assignee))
               .map(({login}) => login)
           );
           this.createComment(
@@ -455,7 +464,7 @@ export class IssuesProcessor {
           return;
         }
 
-        const botPostedLastComment = lastComment.user?.type !== 'User';
+        const botPostedLastComment = isBot(lastComment.user);
         issueLogger.info(
           `Did a bot post the last comment? ${botPostedLastComment}`
         );
@@ -477,7 +486,7 @@ export class IssuesProcessor {
         }
         if (!botPostedLastComment) {
           const maintainerPostedLastComment = lastComment.user
-            ? isMaintainer(lastComment.user.login)
+            ? isMaintainer(lastComment.user)
             : false;
           issueLogger.info(
             `Did a maintainer post the last comment? ${maintainerPostedLastComment}`
@@ -492,7 +501,7 @@ export class IssuesProcessor {
           } else {
             const mentions = createMentions(
               issue.assignees
-                .filter(({login}) => isMaintainer(login))
+                .filter(assignee => isMaintainer(assignee))
                 .map(({login}) => login)
             );
             await this.createComment(
@@ -505,7 +514,7 @@ export class IssuesProcessor {
 
         // We should not stale an issue that has no comments from maintainers
         const hasMaintainerComment = issueComments.some(({user}) =>
-          user ? isMaintainer(user.login) : false
+          user ? isMaintainer(user) : false
         );
         if (!hasMaintainerComment) {
           issueLogger.info('This issue has no comments from maintainers.');

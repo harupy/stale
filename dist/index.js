@@ -487,7 +487,7 @@ class IssuesProcessor {
         });
     }
     processIssue(issue, labelsToAddWhenUnstale, labelsToRemoveWhenUnstale) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementProcessedItemsCount(issue);
             const issueLogger = new issue_logger_1.IssueLogger(issue);
@@ -563,9 +563,16 @@ class IssuesProcessor {
                 }
             }
             if (this.options.mlflow && !issue.isStale) {
+                const mlflowAutomationUsername = 'mlflow-automation';
                 const createMentions = (logins) => logins.map(login => `@${login}`).join(' ');
                 const createMarkdownComment = (message) => `<!-- ${message} -->`;
-                const isMaintainer = (login) => this.maintainers.includes(login);
+                const isMaintainer = (user) => user.type === 'User' && this.maintainers.includes(user.login);
+                const isBot = (user) => {
+                    if (!user) {
+                        return false;
+                    }
+                    return user.type !== 'User' || user.login === mlflowAutomationUsername;
+                };
                 const TAGS = {
                     assignMaintainer: createMarkdownComment('assign-maintainer'),
                     triageIssue: createMarkdownComment('assign-maintainer'),
@@ -582,7 +589,7 @@ class IssuesProcessor {
                         return;
                     }
                     issueLogger.info(`Assignees on this issue: ${issue.assignees.map(({ login }) => login)}`);
-                    const hasMaintainerAssignee = issue.assignees.some(user => isMaintainer(user.login));
+                    const hasMaintainerAssignee = issue.assignees.some(user => isMaintainer(user));
                     const issueComments = yield this.listIssueComments(issue, issue.created_at);
                     const lastComment = issueComments.length > 0
                         ? issueComments[issueComments.length - 1]
@@ -603,7 +610,7 @@ class IssuesProcessor {
                     }
                     if (!lastComment) {
                         const mentions = createMentions(issue.assignees
-                            .filter(({ login }) => isMaintainer(login))
+                            .filter(assignee => isMaintainer(assignee))
                             .map(({ login }) => login));
                         this.createComment(issue, `${TAGS.triageIssue}\n${mentions} Please triage this issue.`);
                         return;
@@ -613,7 +620,7 @@ class IssuesProcessor {
                         issueLogger.info('This issue has a closing PR.');
                         return;
                     }
-                    const botPostedLastComment = ((_c = lastComment.user) === null || _c === void 0 ? void 0 : _c.type) !== 'User';
+                    const botPostedLastComment = isBot(lastComment.user);
                     issueLogger.info(`Did a bot post the last comment? ${botPostedLastComment}`);
                     const lastCommentCreatedAt = lastComment.created_at || IssuesProcessor.getNow();
                     const daysSinceLastCommentCreated = IssuesProcessor.getDaysSince(lastCommentCreatedAt).toFixed(2);
@@ -623,7 +630,7 @@ class IssuesProcessor {
                     }
                     if (!botPostedLastComment) {
                         const maintainerPostedLastComment = lastComment.user
-                            ? isMaintainer(lastComment.user.login)
+                            ? isMaintainer(lastComment.user)
                             : false;
                         issueLogger.info(`Did a maintainer post the last comment? ${maintainerPostedLastComment}`);
                         if (maintainerPostedLastComment) {
@@ -633,20 +640,20 @@ class IssuesProcessor {
                         }
                         else {
                             const mentions = createMentions(issue.assignees
-                                .filter(({ login }) => isMaintainer(login))
+                                .filter(assignee => isMaintainer(assignee))
                                 .map(({ login }) => login));
                             yield this.createComment(issue, `${TAGS.reminderToMaintainers}\n${mentions} Please reply to comments.`);
                             return;
                         }
                     }
                     // We should not stale an issue that has no comments from maintainers
-                    const hasMaintainerComment = issueComments.some(({ user }) => user ? isMaintainer(user.login) : false);
+                    const hasMaintainerComment = issueComments.some(({ user }) => user ? isMaintainer(user) : false);
                     if (!hasMaintainerComment) {
                         issueLogger.info('This issue has no comments from maintainers.');
                         return;
                     }
                     if (botPostedLastComment &&
-                        ((_d = lastComment.body) === null || _d === void 0 ? void 0 : _d.includes(TAGS.reminderToMaintainers))) {
+                        ((_c = lastComment.body) === null || _c === void 0 ? void 0 : _c.includes(TAGS.reminderToMaintainers))) {
                         issueLogger.info('The last comment is a reminder to maintainers posted by a bot.');
                         return;
                     }
