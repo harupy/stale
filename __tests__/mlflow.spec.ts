@@ -69,6 +69,41 @@ test('Remind maintainer to triage if issue has assignee but no comment', async (
   expect(processor.staleIssues).toHaveLength(0);
 });
 
+test('Send assignee reminder only once', async () => {
+  const options = {
+    ...DefaultProcessorOptions,
+    mlflow: true
+  };
+  const issues = [
+    generateIssue({
+      options,
+      updatedAt: getDaysAgoTimestamp(8),
+      createdAt: getDaysAgoTimestamp(8),
+      assignees: []
+    })
+  ];
+  const processor = createIssueProcessorMock({
+    options,
+    getIssues: createGetIssues(issues),
+    listIssueComments: async () => [
+      {
+        user: {
+          login: NON_MAINTAINER,
+          type: 'User'
+        },
+        body: processor.getCommentTags().assignMaintainer,
+        created_at: getDaysAgoTimestamp(15)
+      }
+    ]
+  });
+  await processor.setMaintainers();
+  const createCommentSpy = jest.spyOn(processor, 'createComment');
+  await processor.processIssues(1);
+
+  expect(createCommentSpy).not.toHaveBeenCalled();
+  expect(processor.staleIssues).toHaveLength(0);
+});
+
 test('Remind maintainer to reply when last comment was posted by non-maintainer', async () => {
   const options = {
     ...DefaultProcessorOptions,

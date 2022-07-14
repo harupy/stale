@@ -132,6 +132,23 @@ export class IssuesProcessor {
     this.maintainers.push(...(await this.getMaintainers()));
   }
 
+  createMarkdownComment(message: string): string {
+    return `<!-- ${message} -->`;
+  }
+
+  getCommentTags() {
+    return {
+      assignMaintainer: this.createMarkdownComment('assign-maintainer'),
+      triageIssue: this.createMarkdownComment('triage-issue'),
+      reminderToMaintainers: this.createMarkdownComment(
+        'reminder-to-maintainers'
+      ),
+      reminderToIssueAuthor: this.createMarkdownComment(
+        'reminder-to-issue-author'
+      )
+    };
+  }
+
   async createComment(issue: Issue, body: string) {
     const issueLogger: IssueLogger = new IssueLogger(issue);
     issueLogger.info(`Creating a comment (body: ${body})...`);
@@ -370,9 +387,6 @@ export class IssuesProcessor {
       const createMentions = (logins: string[]): string =>
         logins.map(login => `@${login}`).join(' ');
 
-      const createMarkdownComment = (message: string): string =>
-        `<!-- ${message} -->`;
-
       const isMaintainer = (user: IUser): boolean =>
         user.type === 'User' && this.maintainers.includes(user.login);
 
@@ -383,12 +397,7 @@ export class IssuesProcessor {
         return user.type !== 'User' || user.login === mlflowAutomationUsername;
       };
 
-      const TAGS = {
-        assignMaintainer: createMarkdownComment('assign-maintainer'),
-        triageIssue: createMarkdownComment('assign-maintainer'),
-        reminderToMaintainers: createMarkdownComment('reminder-to-maintainers'),
-        reminderToIssueAuthor: createMarkdownComment('reminder-to-issue-author')
-      };
+      const TAGS = this.getCommentTags();
 
       if (issue.isPullRequest) {
         // TODO
@@ -425,9 +434,10 @@ export class IssuesProcessor {
 
         if (!hasMaintainerAssignee) {
           issueLogger.info('This issue has no assignees');
-          if (
-            !(lastComment && lastComment.body?.includes(TAGS.assignMaintainer))
-          ) {
+          const sentAssigneeReminderBefore = issueComments.some(({body}) =>
+            body?.includes(TAGS.assignMaintainer)
+          );
+          if (!sentAssigneeReminderBefore) {
             const maintainersToMention = [
               'BenWilson2',
               'dbczumar',
