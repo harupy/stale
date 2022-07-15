@@ -422,13 +422,27 @@ class IssuesProcessor {
     }
     getMaintainers() {
         return __awaiter(this, void 0, void 0, function* () {
-            return (yield this.client.rest.orgs.listMembers({ org: 'mlflow' })).data.map(({ login }) => login);
+            return ['BenWilson2', 'dbczumar', 'harupy', 'WeichenXu123'];
+            // return (await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
+            //   ({login}) => login
+            // );
         });
     }
     setMaintainers() {
         return __awaiter(this, void 0, void 0, function* () {
             this.maintainers.push(...(yield this.getMaintainers()));
         });
+    }
+    createMarkdownComment(message) {
+        return `<!-- ${message} -->`;
+    }
+    getCommentTags() {
+        return {
+            assignMaintainer: this.createMarkdownComment('assign-maintainer'),
+            triageIssue: this.createMarkdownComment('triage-issue'),
+            reminderToMaintainers: this.createMarkdownComment('reminder-to-maintainers'),
+            reminderToIssueAuthor: this.createMarkdownComment('reminder-to-issue-author')
+        };
     }
     createComment(issue, body) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -487,7 +501,7 @@ class IssuesProcessor {
         });
     }
     processIssue(issue, labelsToAddWhenUnstale, labelsToRemoveWhenUnstale) {
-        var _a, _b, _c;
+        var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementProcessedItemsCount(issue);
             const issueLogger = new issue_logger_1.IssueLogger(issue);
@@ -565,7 +579,6 @@ class IssuesProcessor {
             if (this.options.mlflow && !issue.isStale) {
                 const mlflowAutomationUsername = 'mlflow-automation';
                 const createMentions = (logins) => logins.map(login => `@${login}`).join(' ');
-                const createMarkdownComment = (message) => `<!-- ${message} -->`;
                 const isMaintainer = (user) => user.type === 'User' && this.maintainers.includes(user.login);
                 const isBot = (user) => {
                     if (!user) {
@@ -573,12 +586,7 @@ class IssuesProcessor {
                     }
                     return user.type !== 'User' || user.login === mlflowAutomationUsername;
                 };
-                const TAGS = {
-                    assignMaintainer: createMarkdownComment('assign-maintainer'),
-                    triageIssue: createMarkdownComment('assign-maintainer'),
-                    reminderToMaintainers: createMarkdownComment('reminder-to-maintainers'),
-                    reminderToIssueAuthor: createMarkdownComment('reminder-to-issue-author')
-                };
+                const TAGS = this.getCommentTags();
                 if (issue.isPullRequest) {
                     // TODO
                 }
@@ -596,7 +604,8 @@ class IssuesProcessor {
                         : undefined;
                     if (!hasMaintainerAssignee) {
                         issueLogger.info('This issue has no assignees');
-                        if (!(lastComment && ((_b = lastComment.body) === null || _b === void 0 ? void 0 : _b.includes(TAGS.assignMaintainer)))) {
+                        const sentAssigneeReminderBefore = issueComments.some(({ body }) => body === null || body === void 0 ? void 0 : body.includes(TAGS.assignMaintainer));
+                        if (!sentAssigneeReminderBefore) {
                             const maintainersToMention = [
                                 'BenWilson2',
                                 'dbczumar',
@@ -653,7 +662,7 @@ class IssuesProcessor {
                         return;
                     }
                     if (botPostedLastComment &&
-                        ((_c = lastComment.body) === null || _c === void 0 ? void 0 : _c.includes(TAGS.reminderToMaintainers))) {
+                        ((_b = lastComment.body) === null || _b === void 0 ? void 0 : _b.includes(TAGS.reminderToMaintainers))) {
                         issueLogger.info('The last comment is a reminder to maintainers posted by a bot.');
                         return;
                     }
