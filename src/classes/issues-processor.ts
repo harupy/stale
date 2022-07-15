@@ -123,9 +123,10 @@ export class IssuesProcessor {
   }
 
   async getMaintainers(): Promise<string[]> {
-    return (await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
-      ({login}) => login
-    );
+    return ['BenWilson2', 'dbczumar', 'harupy', 'WeichenXu123'];
+    // return (await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
+    //   ({login}) => login
+    // );
   }
 
   async setMaintainers() {
