@@ -422,10 +422,7 @@ class IssuesProcessor {
     }
     getMaintainers() {
         return __awaiter(this, void 0, void 0, function* () {
-            return ['BenWilson2', 'dbczumar', 'harupy', 'WeichenXu123'];
-            // return (await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
-            //   ({login}) => login
-            // );
+            return (yield this.client.rest.orgs.listMembers({ org: 'mlflow' })).data.map(({ login }) => login);
         });
     }
     setMaintainers() {
