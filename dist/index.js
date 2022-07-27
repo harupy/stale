@@ -498,7 +498,7 @@ class IssuesProcessor {
         });
     }
     processIssue(issue, labelsToAddWhenUnstale, labelsToRemoveWhenUnstale) {
-        var _a, _b;
+        var _a;
         return __awaiter(this, void 0, void 0, function* () {
             (_a = this.statistics) === null || _a === void 0 ? void 0 : _a.incrementProcessedItemsCount(issue);
             const issueLogger = new issue_logger_1.IssueLogger(issue);
@@ -659,7 +659,11 @@ class IssuesProcessor {
                         return;
                     }
                     if (botPostedLastComment &&
-                        ((_b = lastComment.body) === null || _b === void 0 ? void 0 : _b.includes(TAGS.reminderToMaintainers))) {
+                        [
+                            TAGS.assignMaintainer,
+                            TAGS.triageIssue,
+                            TAGS.reminderToMaintainers
+                        ].some(tag => { var _a; return (_a = lastComment.body) === null || _a === void 0 ? void 0 : _a.includes(tag); })) {
                         issueLogger.info('The last comment is a reminder to maintainers posted by a bot.');
                         return;
                     }

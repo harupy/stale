@@ -533,7 +533,11 @@ export class IssuesProcessor {
 
         if (
           botPostedLastComment &&
-          lastComment.body?.includes(TAGS.reminderToMaintainers)
+          [
+            TAGS.assignMaintainer,
+            TAGS.triageIssue,
+            TAGS.reminderToMaintainers
+          ].some(tag => lastComment.body?.includes(tag))
         ) {
           issueLogger.info(
             'The last comment is a reminder to maintainers posted by a bot.'
