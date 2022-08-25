@@ -422,7 +422,7 @@ class IssuesProcessor {
     }
     getMaintainers() {
         return __awaiter(this, void 0, void 0, function* () {
-            const maintainers = (yield this.client.rest.orgs.listMembers({ org: 'mlflow' })).data.map(({ login }) => login);
+            const maintainers = (yield this.client.rest.orgs.listMembers({ org: 'mlflow', per_page: 100 })).data.map(({ login }) => login);
             // eslint-disable-next-line no-console
             console.log('Members in mlflow organization:', maintainers);
             return maintainers;

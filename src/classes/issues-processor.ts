@@ -124,7 +124,7 @@ export class IssuesProcessor {
 
   async getMaintainers(): Promise<string[]> {
     const maintainers = (
-      await this.client.rest.orgs.listMembers({org: 'mlflow'})
+      await this.client.rest.orgs.listMembers({org: 'mlflow', per_page: 100})
     ).data.map(({login}) => login);
     // eslint-disable-next-line no-console
     console.log('Members in mlflow organization:', maintainers);
