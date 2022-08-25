@@ -123,9 +123,12 @@ export class IssuesProcessor {
   }
 
   async getMaintainers(): Promise<string[]> {
-    return (await this.client.rest.orgs.listMembers({org: 'mlflow'})).data.map(
-      ({login}) => login
-    );
+    const maintainers = (
+      await this.client.rest.orgs.listMembers({org: 'mlflow'})
+    ).data.map(({login}) => login);
+    // eslint-disable-next-line no-console
+    console.log('Members in mlflow organization:', maintainers);
+    return maintainers;
   }
 
   async setMaintainers() {
@@ -433,7 +436,7 @@ export class IssuesProcessor {
             : undefined;
 
         if (!hasMaintainerAssignee) {
-          issueLogger.info('This issue has no assignees');
+          issueLogger.info('This issue has no maintainer assignees');
           const sentAssigneeReminderBefore = issueComments.some(({body}) =>
             body?.includes(TAGS.assignMaintainer)
           );

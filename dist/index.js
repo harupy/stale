@@ -422,7 +422,10 @@ class IssuesProcessor {
     }
     getMaintainers() {
         return __awaiter(this, void 0, void 0, function* () {
-            return (yield this.client.rest.orgs.listMembers({ org: 'mlflow' })).data.map(({ login }) => login);
+            const maintainers = (yield this.client.rest.orgs.listMembers({ org: 'mlflow' })).data.map(({ login }) => login);
+            // eslint-disable-next-line no-console
+            console.log('Members in mlflow organization:', maintainers);
+            return maintainers;
         });
     }
     setMaintainers() {
@@ -600,7 +603,7 @@ class IssuesProcessor {
                         ? issueComments[issueComments.length - 1]
                         : undefined;
                     if (!hasMaintainerAssignee) {
-                        issueLogger.info('This issue has no assignees');
+                        issueLogger.info('This issue has no maintainer assignees');
                         const sentAssigneeReminderBefore = issueComments.some(({ body }) => body === null || body === void 0 ? void 0 : body.includes(TAGS.assignMaintainer));
                         if (!sentAssigneeReminderBefore) {
                             const maintainersToMention = [
