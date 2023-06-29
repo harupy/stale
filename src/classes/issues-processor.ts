@@ -441,12 +441,7 @@ export class IssuesProcessor {
             body?.includes(TAGS.assignMaintainer)
           );
           if (!sentAssigneeReminderBefore) {
-            const maintainersToMention = [
-              'BenWilson2',
-              'dbczumar',
-              'harupy',
-              'WeichenXu123'
-            ];
+            const maintainersToMention = ['mlflow/mlflow-team'];
             const mentions = createMentions(maintainersToMention);
             await this.createComment(
               issue,

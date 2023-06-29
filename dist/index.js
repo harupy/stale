@@ -606,12 +606,7 @@ class IssuesProcessor {
                         issueLogger.info('This issue has no maintainer assignees');
                         const sentAssigneeReminderBefore = issueComments.some(({ body }) => body === null || body === void 0 ? void 0 : body.includes(TAGS.assignMaintainer));
                         if (!sentAssigneeReminderBefore) {
-                            const maintainersToMention = [
-                                'BenWilson2',
-                                'dbczumar',
-                                'harupy',
-                                'WeichenXu123'
-                            ];
+                            const maintainersToMention = ['mlflow/mlflow-team'];
                             const mentions = createMentions(maintainersToMention);
                             yield this.createComment(issue, `${TAGS.assignMaintainer}\n${mentions} Please assign a maintainer and start triaging this issue.`);
                         }
